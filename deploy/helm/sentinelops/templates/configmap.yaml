@@ -1,0 +1,41 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sentinelops.fullname" . }}
+  labels:
+    {{- include "sentinelops.labels" . | nindent 4 }}
+data:
+  APP_NAME: {{ .Values.config.appName | quote }}
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  APP_PROFILE: {{ .Values.profile | quote }}
+  APP_TRANSPORT: {{ .Values.config.transport | default "tcp" | quote }}
+  APP_ADDR: ":2323"
+  METRICS_ADDR: ":9000"
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  APP_BANNER: {{ .Values.config.banner | quote }}
+  APP_AUTH_ENABLED: {{ .Values.config.authEnabled | quote }}
+  APP_AUTH_MAX_ATTEMPTS: {{ .Values.config.authMaxAttempts | quote }}
+  APP_AUTH_RATE_LIMIT_ENABLED: {{ .Values.config.authRateLimitEnabled | quote }}
+  APP_AUTH_RATE_LIMIT_MAX_FAILURES: {{ .Values.config.authRateLimitMaxFailures | quote }}
+  APP_AUTH_RATE_LIMIT_WINDOW: {{ .Values.config.authRateLimitWindow | quote }}
+  APP_AUTH_RATE_LIMIT_LOCKOUT: {{ .Values.config.authRateLimitLockout | quote }}
+  APP_PROJECT_ROOT: "/app"
+  EXTERNAL_AUDIT_ENABLED: {{ .Values.config.externalAuditEnabled | quote }}
+  EXTERNAL_AUDIT_COMMAND: {{ .Values.config.externalAuditCommand | quote }}
+  EXTERNAL_AUDIT_SCRIPT: {{ .Values.config.externalAuditScript | quote }}
+  EXTERNAL_VALIDATOR_ENABLED: {{ .Values.config.externalValidatorEnabled | quote }}
+  EXTERNAL_VALIDATOR_BINARY: {{ .Values.config.externalValidatorBinary | quote }}
+  EXTERNAL_VALIDATOR_FAIL_OPEN: {{ .Values.config.externalValidatorFailOpen | quote }}
+  OPA_POLICY_ENABLED: {{ .Values.config.opaPolicyEnabled | quote }}
+  OPA_BINARY: {{ .Values.config.opaBinary | quote }}
+  OPA_POLICY_DIR: {{ .Values.config.opaPolicyDir | quote }}
+  APP_CONTROL_API_ENABLED: {{ .Values.config.controlApiEnabled | quote }}
+  APP_CONTROL_API_ADDR: {{ .Values.config.controlApiAddr | quote }}
+  APP_CONTROL_API_USER: {{ .Values.config.controlApiUser | quote }}
+  APP_CONTROL_API_CERT_PATH: {{ .Values.config.controlApiCertPath | quote }}
+  APP_CONTROL_API_KEY_PATH: {{ .Values.config.controlApiKeyPath | quote }}
+  APP_STATE_PERSISTENCE_ENABLED: {{ .Values.config.statePersistenceEnabled | quote }}
+  APP_STATE_PERSISTENCE_DIR: {{ .Values.config.statePersistenceDir | quote }}
+  APP_STATE_SESSIONS_PATH: {{ .Values.config.stateSessionsPath | quote }}
+  APP_STATE_TUNNELS_PATH: {{ .Values.config.stateTunnelsPath | quote }}

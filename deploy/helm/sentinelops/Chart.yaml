@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sentinelops
+description: SentinelOps Academy DevSecOps lab
+type: application
+version: 0.2.5
+appVersion: "2.4.1"

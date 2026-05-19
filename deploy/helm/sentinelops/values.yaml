@@ -1,0 +1,111 @@
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 2
+
+image:
+  repository: sentinelops
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+profile: hardened
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  tcpPort: 2323
+  metricsPort: 9000
+  controlAPIPort: 9443
+
+config:
+  appName: sentinelops
+  appEnv: kubernetes
+  transport: tcp
+  logLevel: info
+  banner: "SentinelOps - DevSecOps para Kubernetes"
+  authEnabled: "true"
+  authMaxAttempts: "3"
+  authRateLimitEnabled: "true"
+  authRateLimitMaxFailures: "5"
+  authRateLimitWindow: "1m"
+  authRateLimitLockout: "1m"
+  externalAuditEnabled: "true"
+  externalAuditCommand: "python3"
+  externalAuditScript: "/app/tools/audit/audit.py"
+  externalValidatorEnabled: "true"
+  externalValidatorBinary: "/app/bin/input-guard"
+  externalValidatorFailOpen: "false"
+  opaPolicyEnabled: "true"
+  opaBinary: "/app/bin/opa"
+  opaPolicyDir: "/app/policies/kubernetes"
+  controlApiEnabled: "true"
+  controlApiAddr: ":9443"
+  controlApiUser: "admin"
+  controlApiCertPath: "/data/controlplane/tls.crt"
+  controlApiKeyPath: "/data/controlplane/tls.key"
+  statePersistenceEnabled: "false"
+  statePersistenceDir: "/data/state"
+  stateSessionsPath: "/data/state/sessions.json"
+  stateTunnelsPath: "/data/state/tunnels.json"
+
+secret:
+  create: true
+  existingSecret: ""
+  controlApiPassword: "admin123!"
+  authStudentPassword: "student123!"
+  authTeacherPassword: "teacher123!"
+  authAuditorPassword: "auditor123!"
+  authAdminPassword: "admin123!"
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 10001
+
+containerSecurityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+livenessProbe:
+  enabled: true
+  tcpSocket:
+    port: tcp
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  enabled: true
+  tcpSocket:
+    port: tcp
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+networkPolicy:
+  enabled: true
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

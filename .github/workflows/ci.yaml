@@ -1,0 +1,203 @@
+name: sentinelops-ci
+
+'on':
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.25.x"
+  PYTHON_VERSION: "3.11"
+  RUST_TOOLCHAIN: "stable"
+
+jobs:
+  go-quality:
+    name: Go quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download and verify Go modules
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Check go.mod consistency
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Check formatting
+        run: |
+          test -z "$(gofmt -l .)" || (echo "Go files are not formatted"; gofmt -l .; exit 1)
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run Go tests
+        run: go test ./... -v
+
+  rust-quality:
+    name: Rust quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path rust/input-guard/Cargo.toml
+
+      - name: Build Rust validator
+        run: cargo build --release --manifest-path rust/input-guard/Cargo.toml
+
+      - name: Upload Rust binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: input-guard
+          path: rust/input-guard/target/release/input-guard
+
+  python-audit:
+    name: Python audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run hardened audit
+        run: |
+          mkdir -p reports
+          python3 tools/audit/audit.py --profile hardened --project-root . | tee reports/audit-hardened.json
+
+      - name: Run insecure audit
+        run: |
+          python3 tools/audit/audit.py --profile insecure --project-root . | tee reports/audit-insecure.json
+
+      - name: Upload audit reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-reports
+          path: reports/*.json
+
+  policy-opa:
+    name: Rego policy gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: 0.67.1
+
+      - name: Verify hardened profile passes
+        run: bash scripts/ci-policy-check.sh hardened pass
+
+      - name: Verify insecure profile fails
+        run: bash scripts/ci-policy-check.sh insecure fail
+
+      - name: Upload policy reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-reports
+          path: reports/policy-*.json
+
+  helm-validate:
+    name: Helm validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Lint chart
+        run: helm lint deploy/helm/sentinelops
+
+      - name: Render hardened profile
+        run: bash scripts/ci-helm-validate.sh hardened
+
+      - name: Render insecure profile
+        run: bash scripts/ci-helm-validate.sh insecure
+
+      - name: Upload rendered manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-manifests
+          path: reports/helm/*.yaml
+
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build application image
+        run: docker build -t sentinelops:ci .
+
+      - name: Build tester image
+        run: docker build -f Dockerfile.tester -t sentinelops-tester:ci .
+
+
+  docker-e2e-manual:
+    name: Docker E2E manual
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs:
+      - docker-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Docker E2E demo
+        run: bash scripts/docker-demo.sh
+
+  integration-summary:
+    name: Integration summary
+    runs-on: ubuntu-latest
+    needs:
+      - go-quality
+      - rust-quality
+      - python-audit
+      - policy-opa
+      - helm-validate
+      - docker-build
+
+    steps:
+      - name: Final status
+        run: echo "All CI checks passed successfully."

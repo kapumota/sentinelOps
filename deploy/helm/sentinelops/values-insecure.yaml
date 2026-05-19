@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  tag: "local"
+
+profile: insecure
+
+containerSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: true
+  privileged: true
+  capabilities:
+    drop: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+config:
+  externalValidatorFailOpen: "true"

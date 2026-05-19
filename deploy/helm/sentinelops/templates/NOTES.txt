@@ -1,0 +1,4 @@
+SentinelOps software.
+Service: {{ include "sentinelops.fullname" . }}
+Namespace: {{ .Release.Namespace }}
+Profile: {{ .Values.profile }}

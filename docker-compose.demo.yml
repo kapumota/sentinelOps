@@ -1,0 +1,47 @@
+services:
+  sentinelops:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinelops
+    env_file:
+      - env/container-ssh.env
+    environment:
+      # El demo E2E activa reenvío remoto de forma explícita; el default hardened sigue siendo false.
+      APP_SSH_REMOTE_FORWARD_ENABLED: "true"
+    ports:
+      - "${SSH_PORT:-2223}:2222"
+      - "${METRICS_PORT:-9101}:9001"
+      - "${API_PORT:-9444}:9443"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 10s
+    networks:
+      - sentinelops-net
+
+  tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.tester
+    container_name: sentinelops-tester
+    depends_on:
+      - sentinelops
+    working_dir: /work
+    volumes:
+      - ./data:/work/data
+      - ./reports:/work/reports
+      - ./scripts:/work/scripts
+    entrypoint: ["/bin/sh", "-lc"]
+    command: tail -f /dev/null
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 5s
+    networks:
+      - sentinelops-net
+
+networks:
+  sentinelops-net:
+    name: sentinelops-net

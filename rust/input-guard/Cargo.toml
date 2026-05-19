@@ -1,0 +1,14 @@
+[package]
+name = "input-guard"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "input_guard"
+path = "src/lib.rs"
+
+[[bin]]
+name = "input-guard"
+path = "src/main.rs"
+
+[dependencies]

@@ -1,0 +1,31 @@
+replicaCount: 2
+
+image:
+  tag: "local"
+
+profile: hardened
+
+containerSecurityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+config:
+  externalValidatorFailOpen: "false"
+
+serviceMonitor:
+  enabled: false

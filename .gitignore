@@ -1,0 +1,31 @@
+# Construcciones y salidas compiladas
+bin/
+dist/
+coverage.out
+
+# Datos de ejecución e informes
+data/
+reports/*
+!reports/.gitkeep
+*.log
+
+# Herramientas locales
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Rust
+rust/input-guard/target/
+
+# Archivos generados por Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Certificados locales y artefactos temporales
+*.crt
+*.key
+*.pem
+.tmp/
