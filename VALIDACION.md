@@ -1,34 +1,1150 @@
-### Validación local de SentinelOps v2.4.1
+### Validación de SentinelOps v2.4.1
 
-Validaciones ejecutadas en este entorno:
+SentinelOps v2.4.1 fue validado como software funcional de laboratorio DevSecOps.
 
-- `gofmt -w cmd internal`: completado.
-- `go test ./internal/auth ./internal/config ./internal/persistence ./internal/session ./internal/forwarding`: `pass` usando `GOTOOLCHAIN=local` y un `go.mod` temporal con `go 1.23.0` solo para paquetes sin dependencias externas.
-- `go test ./internal/controlplane/httpapi`: `pass` usando `GOTOOLCHAIN=local` y un `go.mod` temporal con `go 1.23.0`; esta prueba levanta HTTPS real con certificado autofirmado temporal.
-- `python3 tools/audit/audit.py --profile hardened --project-root .`: `pass`, 0 findings.
-- `python3 tools/audit/audit.py --profile insecure --project-root .`: `fail`, 2 findings esperados por perfil demostrativo.
-- `bash -n scripts/*.sh demo.sh`: completado.
+La validación cubrió los siguientes escenarios:
 
-Validaciones no ejecutadas por limitaciones del entorno actual:
+- ejecución local en modo TCP,
+- ejecución local en modo SSH,
+- ejecución con Docker simple,
+- ejecución con Docker Compose,
+- prueba E2E completa,
+- despliegue en Kubernetes con Helm sobre Minikube,
+- API HTTPS administrativa,
+- métricas Prometheus,
+- autenticación de usuarios,
+- comandos internos de laboratorio,
+- túneles SSH locales,
+- túneles SSH remotos,
+- consulta y cierre de túneles por API,
+- auditoría Python,
+- validador Rust,
+- políticas OPA/Rego.
 
-- `go test ./...`: el proyecto requiere Go 1.25.0 y el entorno local solo tiene Go 1.23.2 sin acceso a `proxy.golang.org` para descargar toolchain/módulos.
-- Pruebas de integración que importan `github.com/prometheus/client_golang` o `golang.org/x/crypto/ssh`: no se pudieron compilar aquí porque las dependencias externas no están descargadas y no hay acceso al proxy de Go.
-- `cargo test`: Rust/Cargo no está instalado en el entorno local.
-- `helm lint` / render Helm: Helm no está instalado en el entorno local.
-- Docker E2E: Docker/Compose no se ejecutó aquí.
+El proyecto quedó validado como **laboratorio técnico reproducible**, no como sistema de acceso remoto de producción.
 
-Recomendación antes de entregar:
+### Entorno de validación
+
+#### Sistema base
+
+Validación realizada en entorno Linux local con:
+
+- Docker,
+- Docker Compose v2,
+- Minikube,
+- Kubernetes local,
+- Helm,
+- kubectl,
+- Go,
+- Rust/Cargo,
+- Python,
+- OPA,
+- OpenSSH client,
+- netcat,
+- curl,
+- make.
+
+#### Puertos usados durante la validación
+
+Para evitar conflictos con servicios locales, se usaron puertos alternativos:
+
+| Servicio | Puerto externo | Puerto interno |
+|---|---:|---:|
+| SSH Docker/Compose | `2223` | `2222` |
+| TCP local/Kubernetes | `2325` | `2323` |
+| Métricas Docker/Compose | `9101` | `9001` |
+| Métricas Kubernetes | `9101` | `9000` |
+| API HTTPS | `9444` | `9443` |
+| Túnel local SSH | `9901` | variable |
+| Túnel remoto SSH | `10080` | variable |
+
+### Resultado general
+
+#### Estado final
+
+| Área | Resultado |
+|---|---|
+| Formato Go | Validado |
+| `go vet` | Validado |
+| Pruebas Go | Validado |
+| Pruebas Rust | Validado |
+| Build Rust release | Validado |
+| Auditoría perfil `hardened` | Validado |
+| Auditoría perfil `insecure` | Validado como perfil demostrativo |
+| OPA/Rego | Validado |
+| Docker build | Validado |
+| Docker simple | Validado |
+| Docker Compose | Validado |
+| E2E completa | Validado |
+| Helm template/lint | Validado |
+| Kubernetes/Minikube | Validado |
+| API HTTPS | Validado |
+| Métricas Prometheus | Validado |
+| TCP interactivo | Validado |
+| SSH interactivo | Validado |
+| Túnel local SSH | Validado |
+| Túnel remoto SSH | Validado |
+| Cierre de túneles por API | Validado |
+
+### Validación de código
+
+#### Formato Go
+
+Comando:
 
 ```bash
-go mod tidy
-go mod verify
-gofmt -w cmd internal
-go vet ./...
-go test ./... -v
-cargo test --manifest-path rust/input-guard/Cargo.toml
-python3 tools/audit/audit.py --profile hardened --project-root .
-bash scripts/ci-policy-check.sh hardened pass
-bash scripts/ci-helm-validate.sh hardened
-docker build -t sentinelops:2.4.1 .
-bash scripts/test-e2e-full.sh
+make fmt
+```
+
+Resultado:
+
+```text
+pass
+```
+
+#### Análisis estático Go
+
+Comando:
+
+```bash
+make vet
+```
+
+Resultado:
+
+```text
+pass
+```
+
+#### Pruebas Go
+
+Comando:
+
+```bash
+make test
+```
+
+Resultado:
+
+```text
+pass
+```
+
+Durante la validación se detectó y corrigió un error de tipo en:
+
+```text
+internal/server/tcp_integration_test.go
+```
+
+El error era:
+
+```text
+cannot use body (variable of type []byte) as string value in return statement
+```
+
+Corrección aplicada:
+
+```go
+return string(body)
+```
+
+Después de la corrección, `go vet` y `go test` pasaron correctamente.
+
+### Validación Rust
+
+#### Pruebas unitarias Rust
+
+Comando:
+
+```bash
+make rust-test
+```
+
+Resultado:
+
+```text
+pass
+```
+
+Se validaron los casos del componente:
+
+```text
+rust/input-guard
+```
+
+Incluyendo:
+
+- comandos simples válidos,
+- comandos con argumentos,
+- entradas vacías,
+- entradas demasiado largas,
+- tokens prohibidos,
+- caracteres no soportados.
+
+#### Build release Rust
+
+Comando:
+
+```bash
+make rust-build
+```
+
+Resultado:
+
+```text
+pass
+```
+
+Binario generado:
+
+```text
+rust/input-guard/target/release/input-guard
+```
+### Validación de auditoría
+
+#### Perfil hardened
+
+Comando:
+
+```bash
+make audit PROFILE=hardened
+```
+
+Resultado:
+
+```text
+pass
+```
+
+Interpretación:
+
+```text
+El perfil hardened cumple las reglas esperadas para el laboratorio.
+```
+
+#### Perfil insecure
+
+Comando:
+
+```bash
+make audit PROFILE=insecure
+```
+
+Resultado esperado:
+
+```text
+fail
+```
+
+Interpretación:
+
+```text
+El perfil insecure está diseñado para demostrar hallazgos de configuración débil.El fallo es esperado y útil para fines didácticos.
+```
+
+### Validación de políticas OPA/Rego
+
+#### Perfil hardened
+
+Comando:
+
+```bash
+make policy PROFILE=hardened
+```
+
+Resultado:
+
+```text
+pass
+```
+
+#### Perfil insecure
+
+Comando:
+
+```bash
+make policy PROFILE=insecure
+```
+
+Resultado:
+
+```text
+fallos esperados por perfil demostrativo
+```
+
+### Validación local en modo TCP
+
+Valida SentinelOps ejecutándose directamente en la máquina local usando transporte TCP.
+
+#### Comando de ejecución
+
+```bash
+make run-tcp ENV_FILE=env/dev-tcp.env \
+  APP_ADDR=:2325 \
+  METRICS_ADDR=:9101 \
+  APP_CONTROL_API_ADDR=:9444
+```
+
+#### Prueba de conexión TCP
+
+```bash
+nc localhost 2325
+```
+
+Credenciales usadas:
+
+```text
+student
+student123!
+```
+
+#### Comandos internos validados
+
+```text
+help
+whoami
+status
+profile
+audit
+policy
+tunnels
+quit
+```
+
+#### API y métricas
+
+```bash
+curl http://localhost:9101/metrics
+curl -k https://localhost:9444/healthz
+curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+```
+
+Resultado:
+
+```text
+pass
+```
+### Validación local en modo SSH
+
+Valida SentinelOps ejecutándose directamente en la máquina local usando transporte SSH.
+
+#### Preparación de llaves
+
+```bash
+make ssh-lab-setup USER_NAME=student
+make ssh-lab-setup USER_NAME=teacher
+make ssh-lab-setup USER_NAME=auditor
+make ssh-lab-setup USER_NAME=admin
+```
+
+Permisos aplicados:
+
+```bash
+chmod 700 data/ssh/client
+chmod 600 data/ssh/client/*_ed25519
+chmod 644 data/ssh/client/*.pub 2>/dev/null || true
+```
+
+#### Comando de ejecución
+
+```bash
+make run-ssh ENV_FILE=env/dev-ssh.env \
+  APP_SSH_ADDR=:2223 \
+  METRICS_ADDR=:9101 \
+  APP_CONTROL_API_ADDR=:9444 \
+  APP_SSH_FORWARD_ALLOWLIST=127.0.0.1:9101,localhost:9101
+```
+
+#### Conexión SSH
+
+```bash
+ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
+```
+
+#### Comandos internos validados
+
+```text
+help
+whoami
+status
+audit
+policy
+tunnels
+quit
+```
+
+Resultado:
+
+```text
+pass
+```
+
+### Validación de Docker simple
+
+Valida la imagen final ejecutando un único contenedor `sentinelops-local`.
+
+#### Construcción de imagen
+
+```bash
+make docker-build
+```
+
+Imagen generada:
+
+```text
+sentinelops:local
+```
+
+#### Ejecución Docker simple en modo SSH
+
+```bash
+docker run --rm -d \
+  --name sentinelops-local \
+  -p 2223:2222 \
+  -p 9101:9001 \
+  -p 9444:9443 \
+  -v "$PWD/data:/app/data" \
+  -v "$PWD/reports:/app/reports" \
+  -e APP_ENV=container \
+  -e APP_PROFILE=hardened \
+  -e APP_TRANSPORT=ssh \
+  -e APP_SSH_ADDR=:2222 \
+  -e METRICS_ADDR=:9001 \
+  -e APP_CONTROL_API_ENABLED=true \
+  -e APP_CONTROL_API_ADDR=:9443 \
+  -e APP_CONTROL_API_USER=admin \
+  -e APP_CONTROL_API_PASSWORD='admin123!' \
+  -e APP_SSH_LOCAL_FORWARD_ENABLED=true \
+  -e APP_SSH_FORWARD_ALLOWLIST=127.0.0.1:9001,localhost:9001 \
+  -e APP_SSH_LOCAL_ALLOWED_ROLES=student,teacher,auditor,admin \
+  -e APP_SSH_REMOTE_FORWARD_ENABLED=false \
+  -e APP_AUTH_RATE_LIMIT_ENABLED=true \
+  -e APP_AUTH_RATE_LIMIT_MAX_FAILURES=5 \
+  -e APP_AUTH_RATE_LIMIT_WINDOW=1m \
+  -e APP_AUTH_RATE_LIMIT_LOCKOUT=1m \
+  -e APP_STATE_PERSISTENCE_ENABLED=false \
+  -e APP_STATE_PERSISTENCE_DIR=/app/data/state \
+  -e APP_STATE_SESSIONS_PATH=/app/data/state/sessions.json \
+  -e APP_STATE_TUNNELS_PATH=/app/data/state/tunnels.json \
+  -e EXTERNAL_AUDIT_ENABLED=true \
+  -e EXTERNAL_AUDIT_COMMAND=python3 \
+  -e EXTERNAL_AUDIT_SCRIPT=/app/tools/audit/audit.py \
+  -e EXTERNAL_VALIDATOR_ENABLED=true \
+  -e EXTERNAL_VALIDATOR_BINARY=/app/bin/input-guard \
+  -e EXTERNAL_VALIDATOR_FAIL_OPEN=false \
+  -e OPA_POLICY_ENABLED=true \
+  -e OPA_BINARY=/app/bin/opa \
+  -e OPA_POLICY_DIR=/app/policies/kubernetes \
+  sentinelops:local
+```
+
+#### Verificación
+
+```bash
+docker ps
+docker logs --tail=100 sentinelops-local
+```
+
+Servicios validados:
+
+```text
+SSH en localhost:2223
+Métricas en localhost:9101
+API HTTPS en localhost:9444
+```
+
+#### Pruebas
+
+```bash
+ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
+curl http://localhost:9101/metrics
+curl -k https://localhost:9444/healthz
+curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+```
+
+Resultado:
+
+```text
+pass
+```
+
+### Validación de Docker Compose
+
+Valida el laboratorio completo con dos servicios:
+
+```text
+sentinelops
+sentinelops-tester
+```
+
+#### Correcciones aplicadas
+
+El servicio `tester` fue corregido para evitar error de BusyBox con `sleep infinity`.
+
+Configuración válida:
+
+```yaml
+entrypoint: ["/bin/sh", "-lc"]
+command: tail -f /dev/null
+```
+
+Los puertos fueron parametrizados:
+
+```yaml
+ports:
+  - "${SSH_PORT:-2223}:2222"
+  - "${METRICS_PORT:-9101}:9001"
+  - "${API_PORT:-9444}:9443"
+```
+
+#### Ejecución
+
+```bash
+SSH_PORT=2223 \
+METRICS_PORT=9101 \
+API_PORT=9444 \
+docker compose -f docker-compose.demo.yml up --build -d
+```
+
+#### Verificación
+
+```bash
+docker ps
+docker logs --tail=100 sentinelops
+docker logs --tail=100 sentinelops-tester
+```
+
+Resultado esperado:
+
+```text
+sentinelops          Up
+sentinelops-tester   Up
+```
+
+Servicios validados:
+
+```text
+SSH:      localhost:2223
+Métricas: localhost:9101
+API:      localhost:9444
+```
+
+#### Pruebas externas
+
+```bash
+curl -k https://localhost:9444/healthz
+curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl http://localhost:9101/metrics
+ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
+```
+
+#### Pruebas desde contenedor tester
+
+```bash
+docker exec -it sentinelops-tester sh
+```
+
+Dentro del contenedor:
+
+```sh
+curl -k https://sentinelops:9443/healthz
+curl -k -u 'admin:admin123!' https://sentinelops:9443/api/admin/status
+curl http://sentinelops:9001/metrics
+nc -z sentinelops 2222
+```
+
+Resultado:
+
+```text
+pass
+```
+
+### Validación E2E completa
+
+Valida el flujo completo de SentinelOps con Docker Compose, SSH, API, métricas, túneles y evidencias.
+
+#### Comando
+
+```bash
+SSH_PORT=2223 \
+METRICS_PORT=9101 \
+API_PORT=9444 \
+LOCAL_FORWARD_PORT=9901 \
+REMOTE_BIND_PORT=10080 \
+make e2e-full
+```
+
+El target `e2e-full` ejecuta `scripts/test-e2e-full.sh`, que prepara llaves, levanta Docker Compose, espera servicios, ejecuta comandos SSH, consulta API, valida métricas, prueba túneles y genera evidencias.
+
+#### Pasos validados
+
+La prueba E2E validó:
+
+- dependencias requeridas,
+- generación de llaves SSH,
+- levantamiento de Docker Compose,
+- disponibilidad del puerto SSH,
+- disponibilidad de `/healthz`,
+- disponibilidad de `/api/admin/status` con Basic Auth,
+- disponibilidad de métricas,
+- exportación de estado inicial,
+- comandos SSH `help`, `status`, `whoami`, `audit`, `policy`,
+- métricas directas,
+- túnel local SSH,
+- listado de túneles por API,
+- cierre de túnel local por API,
+- túnel remoto SSH,
+- cierre de túnel remoto por API,
+- exportación de sesiones finales,
+- generación de acta y evidencias.
+
+#### Evidencias generadas
+
+Directorio:
+
+```text
+reports/e2e/latest
+```
+
+Archivos principales:
+
+```text
+acta-validacion.txt
+resultados.json
+run.log
+api-healthz.txt
+api-status.json
+api-sessions.json
+api-tunnels-inicial.json
+api-tunnels-local.json
+api-tunnels-remote.json
+metrics-direct.txt
+metrics-local-forward.txt
+metrics-remote-forward.txt
+ssh-help.txt
+ssh-status.txt
+ssh-whoami.txt
+ssh-audit.txt
+ssh-policy.txt
+docker-sentinelops.log
+docker-sentinelops-tester.log
+docker-compose-ps.txt
+```
+
+Resultado:
+
+```text
+pass
+```
+
+### Validación de Kubernetes con Helm
+
+#### Objetivo
+
+Valida despliegue de SentinelOps en Kubernetes local usando Minikube y Helm.
+
+#### Preparación de Minikube
+
+```bash
+minikube delete
+minikube start --driver=docker
+```
+
+#### Construcción de imagen dentro de Minikube
+
+```bash
+eval "$(minikube docker-env)"
+make docker-build
+docker images | grep sentinelops
+```
+
+Nota:
+
+```text
+No se usó minikube image load como flujo principal.
+Se construyó la imagen directamente dentro del Docker interno de Minikube.
+```
+
+#### Corrección aplicada para Kubernetes
+
+Se validó que Kubernetes debe ejecutar SentinelOps en modo TCP.
+
+Motivo:
+
+```text
+El perfil hardened usa filesystem de solo lectura.
+El modo SSH intenta generar data/ssh/host_ed25519_key.
+Eso produce error read-only file system si no se cambia el transporte.
+```
+
+Configuración requerida en Helm:
+
+```yaml
+APP_TRANSPORT: {{ .Values.config.transport | default "tcp" | quote }}
+```
+
+Y en `values.yaml`:
+
+```yaml
+config:
+  transport: tcp
+```
+
+#### Instalación con Helm
+
+```bash
+kubectl create namespace sentinelops 2>/dev/null || true
+
+helm upgrade --install sentinelops deploy/helm/sentinelops \
+  --namespace sentinelops \
+  -f deploy/helm/sentinelops/values.yaml \
+  -f deploy/helm/sentinelops/values-hardened.yaml \
+  --set replicaCount=1
+```
+
+#### Estado del despliegue
+
+Comandos:
+
+```bash
+kubectl get pods -n sentinelops -o wide
+kubectl get svc -n sentinelops
+kubectl logs -n sentinelops deploy/sentinelops --tail=100
+```
+
+Resultado observado:
+
+```text
+Pod:      Running 1/1
+Service:  ClusterIP
+Ports:    2323/TCP, 9000/TCP, 9443/TCP
+```
+
+Logs esperados:
+
+```text
+servidor de métricas escuchando addr=:9000
+servidor TCP escuchando addr=:2323
+API de control escuchando direccion=:9443
+```
+
+#### Port-forward
+
+```bash
+kubectl port-forward -n sentinelops svc/sentinelops \
+  2325:2323 \
+  9101:9000 \
+  9444:9443
+```
+
+#### Pruebas
+
+En otra terminal:
+
+```bash
+curl -k https://localhost:9444/healthz
+curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl http://localhost:9101/metrics
+nc localhost 2325
+```
+
+Credenciales TCP:
+
+```text
+student
+student123!
+```
+
+Comandos internos validados:
+
+```text
+help
+whoami
+status
+audit
+policy
+quit
+```
+
+Resultado:
+
+```text
+pass
+```
+
+### Incidencias encontradas y corregidas
+
+#### Error de tipo en prueba Go
+
+Error:
+
+```text
+cannot use body (variable of type []byte) as string value in return statement
+```
+
+Corrección:
+
+```go
+return string(body)
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### Puerto de métricas ocupado
+
+Error:
+
+```text
+metrics: listen tcp :9001: bind: address already in use
+```
+
+Corrección:
+
+```text
+usar puertos alternativos:
+METRICS_ADDR=:9101
+API=:9444
+SSH=:2223
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### Docker Compose tester reiniciando
+
+Error:
+
+```text
+BusyBox sleep infinity
+Usage: sleep [N]...
+```
+
+Corrección:
+
+```yaml
+command: tail -f /dev/null
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### Permisos de volumen Docker
+
+Error:
+
+```text
+mkdir data/ssh: permission denied
+```
+
+Corrección:
+
+```bash
+chmod 777 data/ssh
+chmod -R a+rwX data/controlplane data/state reports
+```
+
+Estado:
+
+```text
+corregido para laboratorio local
+```
+
+#### Clave privada SSH con permisos abiertos
+
+Error:
+
+```text
+WARNING: UNPROTECTED PRIVATE KEY FILE
+Permissions 0666 are too open
+```
+
+Corrección:
+
+```bash
+chmod 700 data/ssh/client
+chmod 600 data/ssh/client/*_ed25519
+chmod 644 data/ssh/client/*.pub 2>/dev/null || true
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### API administrativa sin autenticación en E2E
+
+Problema:
+
+```text
+/api/admin/status requiere Basic Auth.
+```
+
+Corrección:
+
+```bash
+curl -ksf -u "${API_USER}:${API_PASSWORD}" "https://localhost:${API_PORT}/api/admin/status"
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### Extracción de ID de túnel local/remoto
+
+Problema:
+
+```text
+El JSON tenía túneles, pero la función no extraía el ID correctamente.
+```
+
+Causa:
+
+```text
+uso incorrecto de stdin al pasar código Python y JSON simultáneamente.
+```
+
+Corrección:
+
+```text
+usar python3 -c para que stdin quede disponible para el JSON.
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### Kubernetes CrashLoopBackOff
+
+Error:
+
+```text
+read-only file system
+open data/ssh/host_ed25519_key
+```
+
+Corrección:
+
+```text
+Kubernetes debe usar APP_TRANSPORT=tcp.
+```
+
+Estado:
+
+```text
+corregido
+```
+
+#### minikube image load fallando
+
+Error:
+
+```text
+GUEST_IMAGE_LOAD
+unable to calculate manifest
+```
+
+Corrección:
+
+```bash
+eval "$(minikube docker-env)"
+make docker-build
+```
+
+Estado:
+
+```text
+corregido mediante build directo dentro del Docker de Minikube
+```
+### Limitaciones conocidas
+
+#### No es software de producción
+
+SentinelOps no debe presentarse como reemplazo de OpenSSH ni como solución de acceso remoto general para producción.
+
+Debe presentarse como:
+
+```text
+laboratorio DevSecOps reproducible
+```
+
+#### Credenciales demo
+
+El proyecto usa credenciales de laboratorio:
+
+```text
+admin/admin123!
+student/student123!
+teacher/teacher123!
+auditor/auditor123!
+```
+
+Estas credenciales deben cambiarse en cualquier entorno no académico.
+
+#### Permisos amplios en Docker local
+
+Algunas pruebas Docker usan permisos amplios sobre carpetas como:
+
+```text
+data/ssh
+data/controlplane
+data/state
+reports
+```
+
+Esto es aceptable para laboratorio local, pero no representa una política de producción.
+
+#### Kubernetes validado en modo TCP
+
+El chart Helm fue validado en modo TCP.
+
+El modo SSH en Kubernetes requiere configuración adicional de volúmenes escribibles para host keys y exposición del puerto SSH.
+
+### Limpieza posterior a validación
+
+#### Detener servicios
+
+```bash
+eval "$(minikube docker-env -u)" 2>/dev/null || true
+
+docker rm -f sentinelops-local sentinelops sentinelops-tester 2>/dev/null || true
+docker compose -f docker-compose.demo.yml down 2>/dev/null || true
+
+helm uninstall sentinelops -n sentinelops 2>/dev/null || true
+kubectl delete namespace sentinelops 2>/dev/null || true
+```
+
+#### Limpiar artefactos generados
+
+```bash
+make cleanup
+
+rm -rf bin
+rm -rf dist
+rm -rf tmp
+rm -rf .tmp
+rm -rf coverage.out
+rm -rf coverage.html
+rm -rf rust/input-guard/target
+rm -rf reports/e2e
+rm -rf reports/*
+```
+
+#### Eliminar secretos y datos runtime
+
+```bash
+rm -f data/ssh/client/*_ed25519
+rm -f data/ssh/client/*_ed25519.pub
+rm -f data/ssh/host_ed25519_key
+rm -f data/ssh/host_ed25519_key.pub
+rm -f data/controlplane/tls.crt
+rm -f data/controlplane/tls.key
+rm -f data/state/*.json
+```
+
+#### Mantener estructura de carpetas
+
+```bash
+mkdir -p data/ssh/client
+mkdir -p data/ssh/authorized_keys
+mkdir -p data/controlplane
+mkdir -p data/state
+mkdir -p reports
+
+touch data/ssh/client/.gitkeep
+touch data/ssh/authorized_keys/.gitkeep
+touch data/controlplane/.gitkeep
+touch data/state/.gitkeep
+touch reports/.gitkeep
+```
+
+### Verificación antes de subir a GitHub
+
+#### Simulación de commit
+
+```bash
+git status --short
+git add -n .
+```
+
+#### Archivos que no deben subirse
+
+No subir:
+
+```text
+claves privadas
+certificados generados
+tls.key
+host keys SSH
+reports/e2e
+binarios compilados
+rust/input-guard/target
+snapshots JSON de runtime
+cachés
+logs
+```
+
+#### Validación final recomendada
+
+```bash
+make fmt
+make vet
+make test
+make rust-test
+make rust-build
+make audit PROFILE=hardened
+make policy PROFILE=hardened
+make helm-lint
+make helm-template PROFILE=hardened
+make e2e-full
+```
+
+Si se ejecuta `make e2e-full` antes de subir, limpiar después:
+
+```bash
+rm -rf reports/e2e
+touch reports/.gitkeep
+```
+
+### Veredicto final
+
+SentinelOps v2.4.1 queda validado como **software real de laboratorio DevSecOps**.
+
+El proyecto demuestra correctamente:
+
+- servidor TCP,
+- servidor SSH,
+- autenticación por usuario, contraseña y clave pública,
+- comandos internos de laboratorio,
+- API HTTPS administrativa,
+- métricas Prometheus,
+- auditoría Python,
+- validación Rust,
+- policy-as-code con OPA/Rego,
+- túneles SSH locales y remotos,
+- control de túneles por API,
+- ejecución local,
+- ejecución con Docker simple,
+- ejecución con Docker Compose,
+- prueba E2E completa,
+- despliegue Kubernetes con Helm.
+
+Resultado final:
+
+```text
+VALIDACIÓN APROBADA 
 ```
