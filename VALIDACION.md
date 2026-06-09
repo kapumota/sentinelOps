@@ -152,6 +152,7 @@ Notas:
 - `make test-unit` ejecuta pruebas rápidas sin contenedores.
 - `make test-integration` ejecuta pruebas con build tag `containers` y requiere Docker.
 - En ejecución local, el target desactiva Ryuk con `TESTCONTAINERS_RYUK_DISABLED=true` para evitar fallos del contenedor reaper cuando Docker no permite ese flujo.
+- La prueba con Prometheus real se ejecuta solo si `SENTINELOPS_PROMETHEUS_CONTAINER_TEST=true`; el target normal valida el endpoint `/metrics` de SentinelOps sin depender de Prometheus como contenedor obligatorio.
 - `make test-race` valida acceso concurrente en paquetes internos.
 - `make test-e2e-containers` requiere `SENTINELOPS_E2E_IMAGE`.
 
@@ -1174,3 +1175,110 @@ Resultado final:
 ```text
 VALIDACIÓN APROBADA 
 ```
+
+### Validación de fase 3 - OpenTelemetry
+
+#### Objetivo de validación
+
+Comprobar que SentinelOps puede ejecutarse con trazas distribuidas opcionales sin romper el flujo normal de pruebas, seguridad y despliegue.
+
+#### Validación local básica
+
+```bash
+make check-secrets
+make fmt
+make vet
+make test
+make rust-test
+```
+
+#### Validación de dependencias
+
+Después de aplicar la fase 3, ejecutar:
+
+```bash
+go mod tidy
+git status --short
+```
+
+Si `go.mod` o `go.sum` cambian por dependencias de OpenTelemetry, esos cambios deben versionarse en la rama de fase 3.
+
+#### Validación con Jaeger
+
+```bash
+make generate-secrets
+source .env.local
+make run-jaeger
+make run-ssh-telemetry
+```
+
+`OTEL_TRACES_ENABLED=false` es el valor seguro por defecto. Para Jaeger UI, `make run-ssh-telemetry` activa explícitamente `OTEL_TRACES_ENABLED=true` y usa `OTEL_EXPORTER_TYPE=otlp-grpc`.
+
+En otra terminal, conectarse al servidor SSH o consultar la API de control:
+
+```bash
+source .env.local
+curl -k https://localhost:9443/healthz
+curl -k -u "$APP_CONTROL_API_USER:$APP_CONTROL_API_PASSWORD" https://localhost:9443/api/admin/status
+```
+
+Comprobar que Jaeger recibió el servicio:
+
+```bash
+curl -s http://localhost:16686/api/services
+```
+
+Luego abrir:
+
+```text
+http://localhost:16686
+```
+
+Buscar el servicio desde el panel izquierdo:
+
+```text
+Service -> sentinelops
+Operation -> control_api.request
+Find Traces
+```
+
+No escribir `sentinelops` en el cuadro superior derecho de Jaeger, porque ese campo espera un trace ID.
+
+#### Validación con Docker Compose
+
+```bash
+source .env.local
+make docker-observability-up
+```
+
+Verificar:
+
+```text
+http://localhost:16686
+http://localhost:9090
+https://localhost:9444/healthz
+```
+
+#### Limpieza local
+
+```bash
+make docker-observability-down
+make stop-jaeger
+```
+
+Si se generaron artefactos de cobertura durante la validación:
+
+```bash
+rm -f coverage.out coverage.html
+```
+
+#### Criterio de aceptación
+
+La fase 3 se considera válida cuando:
+
+- `make test` pasa.
+- `make rust-test` pasa.
+- `make check-secrets` no detecta credenciales conocidas.
+- SentinelOps arranca con `OTEL_TRACES_ENABLED=true`.
+- Jaeger muestra spans del servicio `sentinelops`.
+- La API de control devuelve `X-Correlation-ID` y `X-Trace-ID`.

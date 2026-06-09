@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +22,10 @@ import (
 func TestMetricsIntegrationWithPrometheus(t *testing.T) {
 	SkipIfShort(t)
 	RequireDocker(t)
+
+	if os.Getenv("SENTINELOPS_PROMETHEUS_CONTAINER_TEST") != "true" {
+		t.Skip("Prometheus con contenedor real es opcional; usa SENTINELOPS_PROMETHEUS_CONTAINER_TEST=true para ejecutarlo")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
 	defer cancel()

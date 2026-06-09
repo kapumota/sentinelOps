@@ -13,6 +13,7 @@ import (
 
 type Config struct {
 	AppName                string
+	AppVersion             string
 	Environment            string
 	Profile                string
 	Transport              string
@@ -66,6 +67,11 @@ type Config struct {
 	PolicyEnabled            bool
 	PolicyBinary             string
 	PolicyDir                string
+	TelemetryEnabled         bool
+	TelemetryExporter        string
+	TelemetryEndpoint        string
+	TelemetryInsecure        bool
+	TelemetrySampleRate      float64
 }
 
 func Load() Config {
@@ -80,6 +86,7 @@ func Load() Config {
 
 	return Config{
 		AppName:                getEnv("APP_NAME", "sentinelops"),
+		AppVersion:             getEnv("APP_VERSION", "dev"),
 		Environment:            getEnv("APP_ENV", "dev"),
 		Profile:                getEnv("APP_PROFILE", "hardened"),
 		Transport:              getEnv("APP_TRANSPORT", "tcp"),
@@ -133,6 +140,11 @@ func Load() Config {
 		PolicyEnabled:            getBool("OPA_POLICY_ENABLED", true),
 		PolicyBinary:             getEnv("OPA_BINARY", "opa"),
 		PolicyDir:                getEnv("OPA_POLICY_DIR", "policies/kubernetes"),
+		TelemetryEnabled:         getBool("OTEL_TRACES_ENABLED", false),
+		TelemetryExporter:        getEnv("OTEL_EXPORTER_TYPE", "stdout"),
+		TelemetryEndpoint:        getEnv("OTEL_EXPORTER_ENDPOINT", "localhost:4317"),
+		TelemetryInsecure:        getBool("OTEL_EXPORTER_INSECURE", true),
+		TelemetrySampleRate:      getFloat("OTEL_SAMPLE_RATE", 1.0),
 	}
 }
 
@@ -199,6 +211,16 @@ func getBool(key string, fallback bool) bool {
 func getInt(key string, fallback int) int {
 	if value, ok := os.LookupEnv(key); ok && value != "" {
 		parsed, err := strconv.Atoi(value)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func getFloat(key string, fallback float64) float64 {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
+		parsed, err := strconv.ParseFloat(value, 64)
 		if err == nil {
 			return parsed
 		}

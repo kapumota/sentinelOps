@@ -23,6 +23,7 @@ import (
 	"sentinelops/internal/metrics"
 	"sentinelops/internal/security"
 	"sentinelops/internal/session"
+	"sentinelops/internal/telemetry"
 )
 
 type Server struct {
@@ -147,19 +148,27 @@ func (s *Server) handleConnection(ctx context.Context, rawConn net.Conn) {
 
 	if s.cfg.SSHPasswordAuthEnabled {
 		serverConfig.PasswordCallback = func(meta ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+			_, authSpan := telemetry.StartAuthSpan(context.Background(), "password", meta.User(), meta.RemoteAddr().String())
+			defer authSpan.End()
 			rateKey := auth.Key(meta.RemoteAddr().String(), meta.User())
 			if decision := s.rateLimiter.Allow(rateKey); !decision.Allowed {
-				return nil, fmt.Errorf("login rate limit exceeded; retry after %s", roundDuration(decision.RetryAfter))
+				err := fmt.Errorf("login rate limit exceeded; retry after %s", roundDuration(decision.RetryAfter))
+				telemetry.SetSpanError(authSpan, err)
+				return nil, err
 			}
 
 			identity, err := s.authenticator.Authenticate(meta.User(), string(pass))
 			if err != nil {
 				decision := s.rateLimiter.RecordFailure(rateKey)
 				if !decision.Allowed {
-					return nil, fmt.Errorf("login rate limit exceeded; retry after %s", roundDuration(decision.RetryAfter))
+					err := fmt.Errorf("login rate limit exceeded; retry after %s", roundDuration(decision.RetryAfter))
+					telemetry.SetSpanError(authSpan, err)
+					return nil, err
 				}
+				telemetry.SetSpanError(authSpan, err)
 				return nil, err
 			}
+			telemetry.SetSpanOK(authSpan, "autenticación correcta")
 			s.rateLimiter.RecordSuccess(rateKey)
 			return &ssh.Permissions{Extensions: map[string]string{"username": identity.Username, "role": string(identity.Role), "authn": "password"}}, nil
 		}
@@ -167,6 +176,8 @@ func (s *Server) handleConnection(ctx context.Context, rawConn net.Conn) {
 
 	if s.cfg.SSHPublicKeyAuthEnable {
 		serverConfig.PublicKeyCallback = func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+			_, authSpan := telemetry.StartAuthSpan(context.Background(), "publickey", meta.User(), meta.RemoteAddr().String())
+			defer authSpan.End()
 			if s.authorizedKeys == nil {
 				return nil, fmt.Errorf("el almacén de autenticación por clave pública no está configurado")
 			}
@@ -175,8 +186,11 @@ func (s *Server) handleConnection(ctx context.Context, rawConn net.Conn) {
 				return nil, err
 			}
 			if !ok {
-				return nil, fmt.Errorf("la clave pública no está autorizada para el usuario %s", meta.User())
+				err := fmt.Errorf("la clave pública no está autorizada para el usuario %s", meta.User())
+				telemetry.SetSpanError(authSpan, err)
+				return nil, err
 			}
+			telemetry.SetSpanOK(authSpan, "autenticación correcta")
 			return &ssh.Permissions{Extensions: map[string]string{"username": meta.User(), "role": defaultRoleFor(meta.User()), "authn": "publickey"}}, nil
 		}
 	}
@@ -205,6 +219,8 @@ func (s *Server) handleConnection(ctx context.Context, rawConn net.Conn) {
 	}
 	sess.SetIdentity(username, role)
 	sess.SetAuthn(authn)
+	ctx, sessionSpan := telemetry.StartSessionSpan(ctx, "ssh", sess.ID, conn.RemoteAddr().String())
+	defer sessionSpan.End()
 	closeReason := "desconexion_cliente"
 	s.metrics.ObserveSessionOpened()
 	if s.sessionRegistry != nil {
@@ -237,7 +253,7 @@ func (s *Server) handleConnection(ctx context.Context, rawConn net.Conn) {
 				}
 			}()
 		case "direct-tcpip":
-			go s.handleDirectTCPIP(newChannel, sess)
+			go s.handleDirectTCPIP(ctx, newChannel, sess)
 		default:
 			_ = newChannel.Reject(ssh.UnknownChannelType, "tipo de canal no soportado")
 		}
@@ -380,7 +396,7 @@ func (s *Server) acceptRemoteForwardLoop(conn *ssh.ServerConn, sess *session.Ses
 	}
 }
 
-func (s *Server) handleDirectTCPIP(newChannel ssh.NewChannel, sess *session.Session) {
+func (s *Server) handleDirectTCPIP(ctx context.Context, newChannel ssh.NewChannel, sess *session.Session) {
 	if s.forwardPolicy == nil || !s.forwardPolicy.LocalEnabled() {
 		_ = newChannel.Reject(ssh.Prohibited, "el reenvío local está deshabilitado")
 		s.metrics.ObserveTunnelRejected("local", "disabled")
@@ -404,8 +420,11 @@ func (s *Server) handleDirectTCPIP(newChannel ssh.NewChannel, sess *session.Sess
 	}
 	target := net.JoinHostPort(payload.HostToConnect, strconv.Itoa(int(payload.PortToConnect)))
 	origin := net.JoinHostPort(payload.OriginatorHost, strconv.Itoa(int(payload.OriginatorPort)))
+	_, forwardSpan := telemetry.StartForwardingSpan(ctx, "local", origin, target, sess.ID)
+	defer forwardSpan.End()
 	upstream, err := net.DialTimeout("tcp", target, 5*time.Second)
 	if err != nil {
+		telemetry.SetSpanError(forwardSpan, err)
 		_ = newChannel.Reject(ssh.ConnectionFailed, "falló la conexión al destino")
 		s.metrics.ObserveTunnelRejected("local", "dial_failed")
 		s.logger.Warn("falló el marcado del reenvío", "session_id", sess.ID, "username", sess.Username, "target", target, "origin", origin, "error", err)
@@ -439,6 +458,7 @@ func (s *Server) handleDirectTCPIP(newChannel ssh.NewChannel, sess *session.Sess
 	if tunnelID != "" {
 		_ = s.tunnelManager.Close(tunnelID)
 	}
+	telemetry.SetSpanOK(forwardSpan, "túnel local cerrado")
 	s.logger.Info("túnel local cerrado", "tunnel_id", tunnelID, "session_id", sess.ID, "username", sess.Username, "target", target, "origin", origin)
 }
 
@@ -508,11 +528,16 @@ func (s *Server) runExec(ctx context.Context, channel ssh.Channel, sess *session
 }
 
 func (s *Server) executeInput(ctx context.Context, sess *session.Session, input string) (string, uint32, bool) {
+	_, validationSpan := telemetry.StartValidationSpan(ctx, "hybrid", len(input))
 	if err := s.validator.Validate(input); err != nil {
+		telemetry.SetSpanError(validationSpan, err)
+		validationSpan.End()
 		s.metrics.ObserveRejectedInput()
 		s.metrics.ObserveCommand("validation", "rejected")
 		return "Entrada rechazada: " + err.Error(), 1, false
 	}
+	telemetry.SetSpanOK(validationSpan, "entrada válida")
+	validationSpan.End()
 	name, args := splitCommand(input)
 	if isQuit(name) {
 		return "Sesión finalizada.", 0, true
@@ -524,11 +549,16 @@ func (s *Server) executeInput(ctx context.Context, sess *session.Session, input 
 	}
 	sess.IncrementCommands()
 	runtime := commands.Runtime{Session: sess, Config: s.cfg, Registry: s.registry, Forwarding: s.tunnelManager}
-	output, err := cmd.Execute(ctx, runtime, args)
+	commandCtx, commandSpan := telemetry.StartCommandSpan(ctx, cmd.Name(), sess.ID, sess.Username)
+	output, err := cmd.Execute(commandCtx, runtime, args)
 	if err != nil {
+		telemetry.SetSpanError(commandSpan, err)
+		commandSpan.End()
 		s.metrics.ObserveCommand(cmd.Name(), "error")
 		return "Error: " + err.Error(), 1, false
 	}
+	telemetry.SetSpanOK(commandSpan, "comando ejecutado")
+	commandSpan.End()
 	s.metrics.ObserveCommand(cmd.Name(), "ok")
 	return output, 0, false
 }
