@@ -407,6 +407,26 @@ make vet
 make test
 ```
 
+#### Pruebas por nivel
+
+La fase 2 separa las pruebas en niveles para mantener ciclos rápidos de desarrollo y pruebas de integración reproducibles.
+
+```bash
+make test-unit
+make test-integration
+make test-race
+make test-coverage
+```
+
+`make test-integration` usa `testcontainers-go` y requiere Docker activo. Las pruebas de integración están protegidas con el build tag `containers`, por lo que `make test` sigue ejecutando la suite rápida por defecto.
+
+Para el E2E de imagen completa se debe indicar una imagen local o publicada:
+
+```bash
+docker build -t sentinelops:e2e .
+SENTINELOPS_E2E_IMAGE=sentinelops:e2e make test-e2e-containers
+```
+
 #### Pruebas Rust
 
 ```bash

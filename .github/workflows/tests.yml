@@ -1,0 +1,102 @@
+name: sentinelops-tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.25.x"
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Run unit tests
+        run: make test-unit
+
+  integration-tests:
+    name: Integration tests with testcontainers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download root modules
+        run: go mod download
+
+      - name: Download integration modules
+        run: cd tests/integration && go mod download
+
+      - name: Run integration tests
+        run: make test-integration
+
+  race-detector:
+    name: Race detector
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Run race detector
+        run: make test-race
+
+  e2e-image:
+    name: E2E image smoke test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download integration modules
+        run: cd tests/integration && go mod download
+
+      - name: Build Docker image
+        run: docker build -t sentinelops:e2e .
+
+      - name: Run E2E with testcontainers
+        run: make test-e2e-containers
+        env:
+          SENTINELOPS_E2E_IMAGE: sentinelops:e2e

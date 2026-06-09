@@ -130,6 +130,31 @@ Resultado:
 pass
 ```
 
+#### Pruebas por nivel agregadas en fase 2
+
+Comandos:
+
+```bash
+make test-unit
+make test-integration
+make test-race
+make test-coverage
+```
+
+Resultado esperado:
+
+```text
+pass
+```
+
+Notas:
+
+- `make test-unit` ejecuta pruebas rápidas sin contenedores.
+- `make test-integration` ejecuta pruebas con build tag `containers` y requiere Docker.
+- `make test-race` valida acceso concurrente en paquetes internos.
+- `make test-e2e-containers` requiere `SENTINELOPS_E2E_IMAGE`.
+
+
 Durante la validación se detectó y corrigió un error de tipo en:
 
 ```text
