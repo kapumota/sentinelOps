@@ -13,7 +13,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-const TestTimeout = 30 * time.Second
+const TestTimeout = 90 * time.Second
 
 func SkipIfShort(t *testing.T) {
 	t.Helper()

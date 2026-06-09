@@ -181,8 +181,8 @@ test-unit:
 	go test -short -v ./internal/... ./cmd/...
 
 test-integration:
-	go test -tags=containers -v -run Integration ./internal/...
-	cd tests/integration && go test -tags=containers -v .
+	TESTCONTAINERS_RYUK_DISABLED=true go test -tags=containers -v -run Integration ./internal/...
+	cd tests/integration && TESTCONTAINERS_RYUK_DISABLED=true go test -tags=containers -v -timeout 3m .
 
 test-race:
 	go test -race -v ./internal/...
@@ -196,7 +196,7 @@ test-all: test-unit test-integration test-race
 	@echo "Todas las pruebas configuradas pasaron."
 
 test-e2e-containers:
-	cd tests/integration && go test -tags=containers -v -run E2E -timeout 5m .
+	cd tests/integration && TESTCONTAINERS_RYUK_DISABLED=true go test -tags=containers -v -run E2E -timeout 5m .
 
 rust-test:
 	cargo test --manifest-path $(RUST_MANIFEST)

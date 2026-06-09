@@ -151,6 +151,7 @@ Notas:
 
 - `make test-unit` ejecuta pruebas rápidas sin contenedores.
 - `make test-integration` ejecuta pruebas con build tag `containers` y requiere Docker.
+- En ejecución local, el target desactiva Ryuk con `TESTCONTAINERS_RYUK_DISABLED=true` para evitar fallos del contenedor reaper cuando Docker no permite ese flujo.
 - `make test-race` valida acceso concurrente en paquetes internos.
 - `make test-e2e-containers` requiere `SENTINELOPS_E2E_IMAGE`.
 
