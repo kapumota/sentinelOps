@@ -1,0 +1,56 @@
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: sentinelops-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - sentinelops-net
+
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: sentinelops-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./tests/integration/testdata/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - sentinelops-net
+
+  sentinelops:
+    build: .
+    container_name: sentinelops-observability
+    env_file:
+      - .env.local
+    environment:
+      APP_ENV: container
+      APP_PROFILE: ${APP_PROFILE:-hardened}
+      APP_TRANSPORT: ${APP_TRANSPORT:-ssh}
+      APP_SSH_ADDR: :2222
+      APP_ADDR: :2324
+      METRICS_ADDR: :9001
+      APP_CONTROL_API_ENABLED: "true"
+      APP_CONTROL_API_ADDR: :9443
+      OTEL_TRACES_ENABLED: "true"
+      OTEL_EXPORTER_TYPE: otlp-grpc
+      OTEL_EXPORTER_ENDPOINT: jaeger:4317
+      OTEL_EXPORTER_INSECURE: "true"
+      OTEL_SAMPLE_RATE: "1.0"
+    ports:
+      - "2223:2222"
+      - "2324:2324"
+      - "9101:9001"
+      - "9444:9443"
+    depends_on:
+      - jaeger
+      - prometheus
+    networks:
+      - sentinelops-net
+
+networks:
+  sentinelops-net:
+    driver: bridge

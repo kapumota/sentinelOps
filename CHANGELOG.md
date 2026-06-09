@@ -58,3 +58,19 @@
 #### Pendiente recomendado
 - Reemplazar contraseñas de laboratorio por secretos generados o un backend de identidad si se usa fuera del entorno académico.
 - Ejecutar CI completo en un runner con Go 1.25, Rust/Cargo, Docker, Helm y OPA disponibles.
+
+### Fase 3 - OpenTelemetry y tracing distribuido
+
+#### Agregado
+
+- Se agrega paquete `internal/telemetry` para configurar OpenTelemetry.
+- Se agrega middleware HTTP con correlation IDs y trace IDs.
+- Se agregan spans para sesiones TCP, sesiones SSH, autenticación, validación, comandos y forwarding.
+- Se agrega `docker-compose.observability.yml` con Jaeger, Prometheus y SentinelOps.
+- Se agregan targets `run-jaeger`, `stop-jaeger`, `run-ssh-telemetry` y `docker-observability-up`.
+- Se documenta el flujo de validación de trazas en README y VALIDACION.
+
+#### Compatibilidad
+
+- La telemetría queda deshabilitada por defecto con `OTEL_TRACES_ENABLED=false`.
+- El flujo normal de `make test` no requiere Jaeger ni collector externo.

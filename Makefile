@@ -24,6 +24,11 @@ APP_CONTROL_API_ENABLED ?= true
 APP_CONTROL_API_ADDR ?= :9443
 APP_CONTROL_API_USER ?= admin
 APP_CONTROL_API_PASSWORD ?=
+OTEL_TRACES_ENABLED ?= false
+OTEL_EXPORTER_TYPE ?= stdout
+OTEL_EXPORTER_ENDPOINT ?= localhost:4317
+OTEL_EXPORTER_INSECURE ?= true
+OTEL_SAMPLE_RATE ?= 1.0
 LAB_PASSWORD_STUDENT ?=
 LAB_PASSWORD_TEACHER ?=
 LAB_PASSWORD_AUDITOR ?=
@@ -42,7 +47,7 @@ APP_SSH_REMOTE_FORWARD_ENABLED ?= false
 APP_SSH_REMOTE_BIND_ALLOWLIST ?= 127.0.0.1:10080,127.0.0.1:10443
 APP_SSH_REMOTE_ALLOWED_ROLES ?= teacher,auditor,admin
 
-.PHONY: help build build-client run run-tcp run-ssh ssh-lab-setup demo docker-demo curl-examples test test-unit test-integration test-race test-coverage test-all test-e2e-containers rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-stop deploy-local cleanup
+.PHONY: help build build-client run run-tcp run-ssh run-ssh-telemetry run-jaeger stop-jaeger run-with-telemetry ssh-lab-setup demo docker-demo curl-examples test test-unit test-integration test-race test-coverage test-all test-e2e-containers rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-observability-up docker-observability-down docker-observability-logs docker-stop deploy-local cleanup
 
 help:
 	@echo "Targets disponibles:"
@@ -51,6 +56,9 @@ help:
 	@echo "  make run              - Ejecuta el servidor local (por defecto TCP)"
 	@echo "  make run-tcp          - Ejecuta el servidor en modo TCP"
 	@echo "  make run-ssh          - Ejecuta el servidor en modo SSH"
+	@echo "  make run-ssh-telemetry - Ejecuta SSH con OpenTelemetry local"
+	@echo "  make run-jaeger       - Levanta Jaeger local"
+	@echo "  make run-with-telemetry - Levanta SentinelOps, Jaeger y Prometheus"
 	@echo "  make ssh-lab-setup    - Genera llave de laboratorio y authorized_keys"
 	@echo "  make generate-secrets - Genera .env.local con credenciales aleatorias"
 	@echo "  make curl-examples    - Ejecuta ejemplos curl contra la API HTTPS"
@@ -80,6 +88,7 @@ help:
 	@echo "  make docker-build     - Construye imagen Docker"
 	@echo "  make docker-run-tcp   - Ejecuta contenedor local en modo TCP"
 	@echo "  make docker-run-ssh   - Ejecuta contenedor local en modo SSH"
+	@echo "  make docker-observability-up - Levanta stack con Jaeger"
 	@echo "  make deploy-local     - Despliega contenedor en background"
 	@echo "  make docker-stop      - Detiene contenedor local"
 	@echo "  make cleanup          - Limpia reportes y contenedor"
@@ -119,6 +128,11 @@ run-tcp: rust-build
 	OPA_POLICY_ENABLED=true \
 	OPA_BINARY=opa \
 	OPA_POLICY_DIR=policies/kubernetes \
+	OTEL_TRACES_ENABLED=$(OTEL_TRACES_ENABLED) \
+	OTEL_EXPORTER_TYPE=$(OTEL_EXPORTER_TYPE) \
+	OTEL_EXPORTER_ENDPOINT=$(OTEL_EXPORTER_ENDPOINT) \
+	OTEL_EXPORTER_INSECURE=$(OTEL_EXPORTER_INSECURE) \
+	OTEL_SAMPLE_RATE=$(OTEL_SAMPLE_RATE) \
 	go run ./cmd/server
 
 run-ssh: rust-build
@@ -151,7 +165,36 @@ run-ssh: rust-build
 	APP_SSH_REMOTE_FORWARD_ENABLED=$(APP_SSH_REMOTE_FORWARD_ENABLED) \
 	APP_SSH_REMOTE_BIND_ALLOWLIST=$(APP_SSH_REMOTE_BIND_ALLOWLIST) \
 	APP_SSH_REMOTE_ALLOWED_ROLES=$(APP_SSH_REMOTE_ALLOWED_ROLES) \
+	OTEL_TRACES_ENABLED=$(OTEL_TRACES_ENABLED) \
+	OTEL_EXPORTER_TYPE=$(OTEL_EXPORTER_TYPE) \
+	OTEL_EXPORTER_ENDPOINT=$(OTEL_EXPORTER_ENDPOINT) \
+	OTEL_EXPORTER_INSECURE=$(OTEL_EXPORTER_INSECURE) \
+	OTEL_SAMPLE_RATE=$(OTEL_SAMPLE_RATE) \
 	go run ./cmd/server
+
+
+run-jaeger:
+	docker rm -f sentinelops-jaeger >/dev/null 2>&1 || true
+	docker run -d --name sentinelops-jaeger \
+		-p 16686:16686 \
+		-p 4317:4317 \
+		-p 4318:4318 \
+		-e COLLECTOR_OTLP_ENABLED=true \
+		jaegertracing/all-in-one:1.50
+	@echo "Jaeger disponible en http://localhost:16686"
+
+stop-jaeger:
+	docker rm -f sentinelops-jaeger >/dev/null 2>&1 || true
+
+run-ssh-telemetry:
+	$(MAKE) run-ssh \
+		OTEL_TRACES_ENABLED=true \
+		OTEL_EXPORTER_TYPE=otlp-grpc \
+		OTEL_EXPORTER_ENDPOINT=localhost:4317 \
+		OTEL_EXPORTER_INSECURE=true \
+		OTEL_SAMPLE_RATE=1.0
+
+run-with-telemetry: docker-observability-up
 
 ssh-lab-setup:
 	USER_NAME=$${USER_NAME:-student}; bash scripts/setup-ssh-lab.sh "$$USER_NAME"
@@ -173,6 +216,17 @@ docker-demo-down:
 
 docker-demo-logs:
 	docker logs sentinelops
+
+docker-observability-up:
+	docker compose -f docker-compose.observability.yml up --build -d
+	@echo "Jaeger UI: http://localhost:16686"
+	@echo "Prometheus: http://localhost:9090"
+
+docker-observability-down:
+	docker compose -f docker-compose.observability.yml down
+
+docker-observability-logs:
+	docker compose -f docker-compose.observability.yml logs -f
 
 test:
 	go test ./...

@@ -420,6 +420,20 @@ make test-coverage
 
 `make test-integration` usa `testcontainers-go` y requiere Docker activo. Las pruebas de integración están protegidas con el build tag `containers`, por lo que `make test` sigue ejecutando la suite rápida por defecto.
 
+#### Prometheus con contenedor real
+
+La prueba que levanta un contenedor Prometheus completo es opcional para evitar fallos por red, descarga de imagen o restricciones locales de Docker. Para ejecutarla explícitamente:
+
+```bash
+cd tests/integration
+SENTINELOPS_PROMETHEUS_CONTAINER_TEST=true \
+TESTCONTAINERS_RYUK_DISABLED=true \
+go test -tags=containers -v -run TestMetricsIntegrationWithPrometheus -timeout 3m .
+cd ../..
+```
+
+El target `make test-integration` mantiene como obligatoria la validación del endpoint `/metrics` propio de SentinelOps.
+
 #### Ryuk en entorno local
 
 El target `make test-integration` desactiva Ryuk con `TESTCONTAINERS_RYUK_DISABLED=true` para evitar fallos locales cuando Docker no permite iniciar el contenedor reaper. Las pruebas llaman a `Terminate` sobre cada contenedor creado, por lo que la limpieza normal sigue ocurriendo al cerrar cada test.
@@ -1359,3 +1373,126 @@ El proyecto demuestra:
 
 
 Es **laboratorio técnico reproducible para DevSecOps, seguridad defensiva, observabilidad, policy as code y despliegue cloud native.**
+
+### Fase 3 - Observabilidad con OpenTelemetry
+
+#### Objetivo
+
+La fase 3 agrega trazas distribuidas opcionales con OpenTelemetry para seguir el flujo de una solicitud entre transporte TCP, transporte SSH, API de control, validación de entradas, comandos y túneles.
+
+#### Variables de entorno
+
+OpenTelemetry queda deshabilitado por defecto para que Jaeger no sea una dependencia obligatoria durante pruebas unitarias, demos simples o ejecución local básica.
+
+```bash
+OTEL_TRACES_ENABLED=false
+OTEL_EXPORTER_TYPE=stdout
+OTEL_EXPORTER_ENDPOINT=localhost:4317
+OTEL_EXPORTER_INSECURE=true
+OTEL_SAMPLE_RATE=1.0
+```
+
+Para ver el servicio `sentinelops` en Jaeger UI, las trazas deben activarse explícitamente:
+
+```bash
+OTEL_TRACES_ENABLED=true
+OTEL_EXPORTER_TYPE=otlp-grpc
+OTEL_EXPORTER_ENDPOINT=localhost:4317
+OTEL_EXPORTER_INSECURE=true
+OTEL_SAMPLE_RATE=1.0
+```
+
+Exportadores soportados:
+
+- `stdout`: imprime spans en consola para desarrollo local.
+- `otlp-grpc`: envía trazas por OTLP gRPC.
+- `otlp-http`: envía trazas por OTLP HTTP.
+- `jaeger`: alias compatible con Jaeger usando OTLP gRPC.
+
+#### Ejecutar Jaeger local
+
+```bash
+make run-jaeger
+```
+
+La interfaz queda disponible en:
+
+```text
+http://localhost:16686
+```
+
+#### Ejecutar SentinelOps con trazas
+
+```bash
+source .env.local
+make run-ssh-telemetry
+```
+
+El target `make run-ssh-telemetry` fuerza `OTEL_TRACES_ENABLED=true` y `OTEL_EXPORTER_TYPE=otlp-grpc`, incluso si `.env.local` conserva `OTEL_TRACES_ENABLED=false`.
+
+Después de generar tráfico contra la API de control, Jaeger debe listar el servicio:
+
+```bash
+curl -s http://localhost:16686/api/services
+```
+
+En la interfaz web se debe usar el panel izquierdo:
+
+```text
+Service -> sentinelops
+Operation -> control_api.request
+Find Traces
+```
+
+No se debe escribir `sentinelops` en el cuadro superior derecho de Jaeger, porque ese cuadro espera un identificador de traza.
+
+#### Stack completo con observabilidad
+
+```bash
+source .env.local
+docker compose -f docker-compose.observability.yml up --build -d
+```
+
+También se puede usar:
+
+```bash
+make docker-observability-up
+```
+
+Servicios expuestos:
+
+```text
+Jaeger UI: http://localhost:16686
+Prometheus: http://localhost:9090
+SentinelOps SSH: localhost:2223
+SentinelOps métricas: http://localhost:9101/metrics
+SentinelOps API: https://localhost:9444/healthz
+```
+
+#### Spans principales
+
+```text
+tcp.session
+ssh.session
+auth.authenticate
+security.validate_input
+command.execute
+ssh.forwarding
+control_api.request
+```
+
+#### Correlation IDs
+
+La API de control acepta y devuelve el header:
+
+```text
+X-Correlation-ID
+```
+
+También devuelve:
+
+```text
+X-Trace-ID
+```
+
+Esto permite relacionar una solicitud HTTP con su traza correspondiente en Jaeger.

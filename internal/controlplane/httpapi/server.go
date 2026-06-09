@@ -24,6 +24,7 @@ import (
 	"sentinelops/internal/forwarding"
 	"sentinelops/internal/persistence"
 	"sentinelops/internal/session"
+	"sentinelops/internal/telemetry"
 )
 
 type Server struct {
@@ -64,9 +65,11 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/admin/state/sessions", s.withAuth(s.handlePersistedSessions))
 	mux.HandleFunc("/api/admin/state/tunnels", s.withAuth(s.handlePersistedTunnels))
 
+	handler := telemetry.HTTPMiddleware("control_api.request", mux)
+
 	s.httpServer = &http.Server{
 		Addr:              s.cfg.ControlAPIAddr,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       s.cfg.ReadTimeout,
 		WriteTimeout:      s.cfg.WriteTimeout,

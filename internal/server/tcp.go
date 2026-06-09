@@ -17,6 +17,7 @@ import (
 	"sentinelops/internal/metrics"
 	"sentinelops/internal/security"
 	"sentinelops/internal/session"
+	"sentinelops/internal/telemetry"
 )
 
 type TCPServer struct {
@@ -88,6 +89,8 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 
 	sess := session.New(conn.RemoteAddr().String())
 	sess.SetTransport("tcp")
+	ctx, sessionSpan := telemetry.StartSessionSpan(ctx, "tcp", sess.ID, conn.RemoteAddr().String())
+	defer sessionSpan.End()
 	closeReason := "desconexion_cliente"
 
 	s.metrics.ObserveSessionOpened()
@@ -124,7 +127,7 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
 	if s.cfg.AuthEnabled {
-		if err := s.authenticate(conn, reader, sess); err != nil {
+		if err := s.authenticate(ctx, conn, reader, sess); err != nil {
 			closeReason = "auth_failed"
 			_ = s.writeLine(conn, "La autenticación falló. La sesión se cerró.")
 			return
@@ -168,12 +171,17 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 			continue
 		}
 
+		_, validationSpan := telemetry.StartValidationSpan(ctx, "hybrid", len(input))
 		if err := s.validator.Validate(input); err != nil {
+			telemetry.SetSpanError(validationSpan, err)
+			validationSpan.End()
 			s.metrics.ObserveRejectedInput()
 			s.metrics.ObserveCommand("validation", "rejected")
 			_ = s.writeLine(conn, "Entrada rechazada: "+err.Error())
 			continue
 		}
+		telemetry.SetSpanOK(validationSpan, "entrada válida")
+		validationSpan.End()
 
 		name, args := splitCommand(input)
 		if isQuit(name) {
@@ -197,13 +205,18 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 			Registry: s.registry,
 		}
 
-		output, err := cmd.Execute(ctx, runtime, args)
+		commandCtx, commandSpan := telemetry.StartCommandSpan(ctx, cmd.Name(), sess.ID, sess.Username)
+		output, err := cmd.Execute(commandCtx, runtime, args)
 		if err != nil {
+			telemetry.SetSpanError(commandSpan, err)
+			commandSpan.End()
 			s.metrics.ObserveCommand(cmd.Name(), "error")
 			_ = s.writeLine(conn, "Error: "+err.Error())
 			continue
 		}
 
+		telemetry.SetSpanOK(commandSpan, "comando ejecutado")
+		commandSpan.End()
 		s.metrics.ObserveCommand(cmd.Name(), "ok")
 
 		if output != "" {
@@ -215,7 +228,7 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (s *TCPServer) authenticate(conn net.Conn, reader *bufio.Reader, sess *session.Session) error {
+func (s *TCPServer) authenticate(ctx context.Context, conn net.Conn, reader *bufio.Reader, sess *session.Session) error {
 	maxAttempts := s.cfg.AuthMaxAttempts
 	if maxAttempts <= 0 {
 		maxAttempts = 3
@@ -240,10 +253,14 @@ func (s *TCPServer) authenticate(conn net.Conn, reader *bufio.Reader, sess *sess
 			return err
 		}
 
+		_, authSpan := telemetry.StartAuthSpan(ctx, "password", username, conn.RemoteAddr().String())
 		rateKey := auth.Key(conn.RemoteAddr().String(), username)
 		if decision := s.rateLimiter.Allow(rateKey); !decision.Allowed {
+			err := errors.New("login rate limit exceeded")
+			telemetry.SetSpanError(authSpan, err)
+			authSpan.End()
 			_ = s.writeLine(conn, fmt.Sprintf("Too many failed login attempts. Retry after %s.", roundDuration(decision.RetryAfter)))
-			return errors.New("login rate limit exceeded")
+			return err
 		}
 
 		identity, err := s.authenticator.Authenticate(username, password)
@@ -251,9 +268,13 @@ func (s *TCPServer) authenticate(conn net.Conn, reader *bufio.Reader, sess *sess
 			s.rateLimiter.RecordSuccess(rateKey)
 			sess.SetIdentity(identity.Username, string(identity.Role))
 			sess.SetAuthn("password")
+			telemetry.SetSpanOK(authSpan, "autenticación correcta")
+			authSpan.End()
 			_ = s.writeLine(conn, "Authentication successful.")
 			return nil
 		}
+		telemetry.SetSpanError(authSpan, err)
+		authSpan.End()
 
 		decision := s.rateLimiter.RecordFailure(rateKey)
 		if !decision.Allowed {

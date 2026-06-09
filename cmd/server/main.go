@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"sentinelops/internal/audit"
 	"sentinelops/internal/auth"
@@ -24,6 +25,7 @@ import (
 	"sentinelops/internal/security"
 	"sentinelops/internal/server"
 	"sentinelops/internal/session"
+	"sentinelops/internal/telemetry"
 	"sentinelops/internal/transport/sshserver"
 )
 
@@ -40,6 +42,29 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	telemetryProvider, err := telemetry.Init(ctx, telemetry.Config{
+		Enabled:        cfg.TelemetryEnabled,
+		ServiceName:    cfg.AppName,
+		ServiceVersion: cfg.AppVersion,
+		Environment:    cfg.Environment,
+		Exporter:       cfg.TelemetryExporter,
+		Endpoint:       cfg.TelemetryEndpoint,
+		Insecure:       cfg.TelemetryInsecure,
+		SampleRate:     cfg.TelemetrySampleRate,
+	})
+	if err != nil {
+		logger.Warn("OpenTelemetry no se pudo inicializar", "error", err)
+	} else if cfg.TelemetryEnabled {
+		logger.Info("OpenTelemetry inicializado", "exportador", cfg.TelemetryExporter, "endpoint", cfg.TelemetryEndpoint)
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := telemetryProvider.Shutdown(shutdownCtx); err != nil {
+				logger.Warn("falló el cierre de OpenTelemetry", "error", err)
+			}
+		}()
+	}
 
 	metricServer := metrics.New(cfg.MetricsAddr, logger)
 	stateStore := persistence.NewStore(persistence.Options{
