@@ -1,10 +1,14 @@
 package config
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
+
+	"sentinelops/internal/secrets"
 )
 
 type Config struct {
@@ -65,7 +69,14 @@ type Config struct {
 }
 
 func Load() Config {
+	loadEnvFileIfExists(getEnv("APP_ENV_FILE", ".env.local"))
+
 	stateDir := getEnv("APP_STATE_PERSISTENCE_DIR", "data/state")
+	controlPassword := getEnv("APP_CONTROL_API_PASSWORD", "")
+	if controlPassword == "" {
+		controlPassword = secrets.GeneratePassword(24)
+		secrets.LogGeneratedCredential("API de control", getEnv("APP_CONTROL_API_USER", "admin"), controlPassword)
+	}
 
 	return Config{
 		AppName:                getEnv("APP_NAME", "sentinelops"),
@@ -93,7 +104,7 @@ func Load() Config {
 		ControlAPICertPath:  getEnv("APP_CONTROL_API_CERT_PATH", "data/controlplane/tls.crt"),
 		ControlAPIKeyPath:   getEnv("APP_CONTROL_API_KEY_PATH", "data/controlplane/tls.key"),
 		ControlAPIUser:      getEnv("APP_CONTROL_API_USER", "admin"),
-		ControlAPIPassword:  getEnv("APP_CONTROL_API_PASSWORD", "admin123!"),
+		ControlAPIPassword:  controlPassword,
 		ControlAPICertHosts: getEnv("APP_CONTROL_API_CERT_HOSTS", "localhost,127.0.0.1"),
 
 		MetricsAddr:              getEnv("METRICS_ADDR", ":9000"),
@@ -122,6 +133,39 @@ func Load() Config {
 		PolicyEnabled:            getBool("OPA_POLICY_ENABLED", true),
 		PolicyBinary:             getEnv("OPA_BINARY", "opa"),
 		PolicyDir:                getEnv("OPA_POLICY_DIR", "policies/kubernetes"),
+	}
+}
+
+func loadEnvFileIfExists(path string) {
+	if strings.TrimSpace(path) == "" {
+		return
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		value = strings.Trim(value, "\"'")
+		if key == "" {
+			continue
+		}
+		if current, exists := os.LookupEnv(key); !exists || current == "" {
+			_ = os.Setenv(key, value)
+		}
 	}
 }
 

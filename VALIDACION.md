@@ -295,7 +295,7 @@ Credenciales usadas:
 
 ```text
 student
-student123!
+<LAB_PASSWORD_STUDENT>
 ```
 
 #### Comandos internos validados
@@ -316,7 +316,7 @@ quit
 ```bash
 curl http://localhost:9101/metrics
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 ```
 
 Resultado:
@@ -413,7 +413,7 @@ docker run --rm -d \
   -e APP_CONTROL_API_ENABLED=true \
   -e APP_CONTROL_API_ADDR=:9443 \
   -e APP_CONTROL_API_USER=admin \
-  -e APP_CONTROL_API_PASSWORD='admin123!' \
+  -e APP_CONTROL_API_PASSWORD='<APP_CONTROL_API_PASSWORD>' \
   -e APP_SSH_LOCAL_FORWARD_ENABLED=true \
   -e APP_SSH_FORWARD_ALLOWLIST=127.0.0.1:9001,localhost:9001 \
   -e APP_SSH_LOCAL_ALLOWED_ROLES=student,teacher,auditor,admin \
@@ -459,7 +459,7 @@ API HTTPS en localhost:9444
 ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
 curl http://localhost:9101/metrics
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 ```
 
 Resultado:
@@ -533,7 +533,7 @@ API:      localhost:9444
 
 ```bash
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 curl http://localhost:9101/metrics
 ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
 ```
@@ -548,7 +548,7 @@ Dentro del contenedor:
 
 ```sh
 curl -k https://sentinelops:9443/healthz
-curl -k -u 'admin:admin123!' https://sentinelops:9443/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://sentinelops:9443/api/admin/status
 curl http://sentinelops:9001/metrics
 nc -z sentinelops 2222
 ```
@@ -743,7 +743,7 @@ En otra terminal:
 
 ```bash
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 curl http://localhost:9101/metrics
 nc localhost 2325
 ```
@@ -752,7 +752,7 @@ Credenciales TCP:
 
 ```text
 student
-student123!
+<LAB_PASSWORD_STUDENT>
 ```
 
 Comandos internos validados:
@@ -987,10 +987,10 @@ laboratorio DevSecOps reproducible
 El proyecto usa credenciales de laboratorio:
 
 ```text
-admin/admin123!
-student/student123!
-teacher/teacher123!
-auditor/auditor123!
+admin/<APP_CONTROL_API_PASSWORD>
+student/<LAB_PASSWORD_STUDENT>
+teacher/<LAB_PASSWORD_TEACHER>
+auditor/<LAB_PASSWORD_AUDITOR>
 ```
 
 Estas credenciales deben cambiarse en cualquier entorno no académico.

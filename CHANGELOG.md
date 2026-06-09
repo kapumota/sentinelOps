@@ -1,9 +1,19 @@
 ### Changelog
 
+### Unreleased - fase 1 secrets dinámicos
+
+#### Corregido
+- Se eliminaron credenciales de laboratorio hardcodeadas en código, scripts, Docker, Helm y documentación.
+- Se agregó generación local de `.env.local` con contraseñas aleatorias mediante `make generate-secrets`.
+
+#### Agregado
+- `.env.example` como plantilla versionada sin secretos reales.
+- Verificación `make check-secrets` para bloquear credenciales conocidas antes de integrar cambios.
+
 ### 2.4.1 - integración y liberación del estado
 
 #### Mantenido
-- Se conservan las contraseñas por defecto de laboratorio: `admin123!`, `student123!`, `teacher123!` y `auditor123!`.
+- Se documentan como placeholders las credenciales de laboratorio: `<LAB_PASSWORD_STUDENT>`, `<LAB_PASSWORD_TEACHER>`, `<LAB_PASSWORD_AUDITOR>` y `<LAB_PASSWORD_ADMIN>`.
 
 #### Agregado
 - Rate limiting configurable para login TCP y autenticación SSH por contraseña.

@@ -19,6 +19,7 @@ import (
 )
 
 func TestTCPLoginRateLimitIntegration(t *testing.T) {
+	t.Setenv("LAB_PASSWORD_STUDENT", "student-secret")
 	addr := freeTCPAddr(t)
 	cfg := config.Config{
 		ListenAddr:      addr,
@@ -69,7 +70,7 @@ func TestTCPLoginRateLimitIntegration(t *testing.T) {
 		t.Fatalf("se esperaba bloqueo temporal de la cuenta en el segundo intento, se obtuvo %q", second)
 	}
 
-	third := attemptLogin(t, addr, "student", "student123!")
+	third := attemptLogin(t, addr, "student", "student-secret")
 	if !strings.Contains(third, "Too many failed login attempts") {
 		t.Fatalf("se esperaba que la contraseña válida fuera bloqueada durante el periodo de bloqueo, se obtuvo %q", third)
 	}

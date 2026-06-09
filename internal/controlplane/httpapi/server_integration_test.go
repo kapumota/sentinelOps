@@ -31,7 +31,7 @@ func TestControlAPIHTTPSIntegration(t *testing.T) {
 		ControlAPICertPath:  filepath.Join(dir, "tls.crt"),
 		ControlAPIKeyPath:   filepath.Join(dir, "tls.key"),
 		ControlAPIUser:      "admin",
-		ControlAPIPassword:  "admin123!",
+		ControlAPIPassword:  "admin-secret",
 		ControlAPICertHosts: "localhost,127.0.0.1",
 		ReadTimeout:         5 * time.Second,
 		WriteTimeout:        5 * time.Second,
@@ -77,7 +77,7 @@ func TestControlAPIHTTPSIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
-	req.SetBasicAuth("admin", "admin123!")
+	req.SetBasicAuth("admin", "admin-secret")
 	res, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("authorized status request failed: %v", err)

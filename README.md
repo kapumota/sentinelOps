@@ -54,14 +54,49 @@ SentinelOps incluye usuarios de laboratorio para pruebas controladas.
 
 | Usuario | Contraseña | Rol |
 |---|---|---|
-| `student` | `student123!` | estudiante |
-| `teacher` | `teacher123!` | docente |
-| `auditor` | `auditor123!` | auditor |
-| `admin` | `admin123!` | administrador |
+| `student` | `<LAB_PASSWORD_STUDENT>` | estudiante |
+| `teacher` | `<LAB_PASSWORD_TEACHER>` | docente |
+| `auditor` | `<LAB_PASSWORD_AUDITOR>` | auditor |
+| `admin` | `<LAB_PASSWORD_ADMIN>` | administrador |
+
+#### Generar credenciales locales
+
+Las credenciales se generan dinámicamente y no se versionan.
+
+```bash
+make generate-secrets
+```
+
+El comando crea `.env.local` con permisos restrictivos. También se puede preparar el entorno local completo con:
+
+```bash
+make setup-dev
+```
+
+#### Usar las credenciales en desarrollo
+
+```bash
+source .env.local
+make run-ssh
+```
+
+Para revisar las contraseñas activas del entorno local:
+
+```bash
+grep 'PASSWORD' .env.local
+```
+
+#### API de control
+
+La API HTTPS administrativa usa `APP_CONTROL_API_USER` y `APP_CONTROL_API_PASSWORD`.
+
+```bash
+curl -k -u "${APP_CONTROL_API_USER}:${APP_CONTROL_API_PASSWORD}" https://localhost:9443/api/admin/status
+```
 
 #### Advertencia de seguridad
 
-Estas credenciales son únicamente para entorno académico y local.
+Las credenciales se generan para entorno académico y local.
 
 No deben usarse en producción.
 
@@ -445,7 +480,7 @@ Cuando pida credenciales escribe:
 
 ```text
 student
-student123!
+<LAB_PASSWORD_STUDENT>
 ```
 
 Comandos útiles:
@@ -468,7 +503,7 @@ Prueba API y métricas:
 ```bash
 curl http://localhost:9101/metrics
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 ```
 
 ### Ejecución local en modo SSH
@@ -545,7 +580,7 @@ Prueba API y métricas:
 ```bash
 curl http://localhost:9101/metrics
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 ```
 
 ### Túnel local SSH
@@ -667,7 +702,7 @@ docker run --rm -d \
   -e APP_CONTROL_API_ENABLED=true \
   -e APP_CONTROL_API_ADDR=:9443 \
   -e APP_CONTROL_API_USER=admin \
-  -e APP_CONTROL_API_PASSWORD='admin123!' \
+  -e APP_CONTROL_API_PASSWORD='<APP_CONTROL_API_PASSWORD>' \
   -e APP_SSH_LOCAL_FORWARD_ENABLED=true \
   -e APP_SSH_FORWARD_ALLOWLIST=127.0.0.1:9001,localhost:9001 \
   -e APP_SSH_LOCAL_ALLOWED_ROLES=student,teacher,auditor,admin \
@@ -717,7 +752,7 @@ ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
 
 ```bash
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 curl http://localhost:9101/metrics
 ```
 
@@ -815,7 +850,7 @@ docker logs -f sentinelops-tester
 
 ```bash
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 curl http://localhost:9101/metrics
 ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
 ```
@@ -830,7 +865,7 @@ Dentro, escribe los siguiente:
 
 ```sh
 curl -k https://sentinelops:9443/healthz
-curl -k -u 'admin:admin123!' https://sentinelops:9443/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://sentinelops:9443/api/admin/status
 curl http://sentinelops:9001/metrics
 nc -z sentinelops 2222
 ```
@@ -1003,7 +1038,7 @@ En otra terminal:
 
 ```bash
 curl -k https://localhost:9444/healthz
-curl -k -u 'admin:admin123!' https://localhost:9444/api/admin/status
+curl -k -u 'admin:<APP_CONTROL_API_PASSWORD>' https://localhost:9444/api/admin/status
 curl http://localhost:9101/metrics
 nc localhost 2325
 ```
@@ -1012,7 +1047,7 @@ En `nc`:
 
 ```text
 student
-student123!
+<LAB_PASSWORD_STUDENT>
 ```
 
 Luego:

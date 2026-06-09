@@ -3,8 +3,11 @@ package auth
 import (
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
+
+	"sentinelops/internal/secrets"
 )
 
 type Role string
@@ -37,19 +40,23 @@ type Service struct {
 func NewDefaultService() *Service {
 	return &Service{
 		users: map[string]userRecord{
-			"student": newUserRecord("APP_AUTH_STUDENT_PASSWORD", "student123!", RoleStudent),
-			"teacher": newUserRecord("APP_AUTH_TEACHER_PASSWORD", "teacher123!", RoleTeacher),
-			"auditor": newUserRecord("APP_AUTH_AUDITOR_PASSWORD", "auditor123!", RoleAuditor),
-			"admin":   newUserRecord("APP_AUTH_ADMIN_PASSWORD", "admin123!", RoleAdmin),
+			"student": newUserRecord("student", RoleStudent, "LAB_PASSWORD_STUDENT", "APP_AUTH_STUDENT_PASSWORD"),
+			"teacher": newUserRecord("teacher", RoleTeacher, "LAB_PASSWORD_TEACHER", "APP_AUTH_TEACHER_PASSWORD"),
+			"auditor": newUserRecord("auditor", RoleAuditor, "LAB_PASSWORD_AUDITOR", "APP_AUTH_AUDITOR_PASSWORD"),
+			"admin":   newUserRecord("admin", RoleAdmin, "LAB_PASSWORD_ADMIN", "APP_AUTH_ADMIN_PASSWORD"),
 		},
 	}
 }
 
-func newUserRecord(envKey, fallback string, role Role) userRecord {
-	secret, ok := os.LookupEnv(envKey)
-	if !ok || secret == "" {
-		secret = fallback
+func newUserRecord(username string, role Role, envKeys ...string) userRecord {
+	for _, envKey := range envKeys {
+		if secret, ok := os.LookupEnv(envKey); ok && secret != "" {
+			return userRecord{password: secret, role: role}
+		}
 	}
+
+	secret := secrets.GeneratePassword(20)
+	secrets.LogGeneratedCredential(fmt.Sprintf("usuario de laboratorio %s", username), username, secret)
 	return userRecord{password: secret, role: role}
 }
 

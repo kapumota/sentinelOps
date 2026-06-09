@@ -4,10 +4,20 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+# shellcheck source=/dev/null
+source "${ROOT_DIR}/scripts/env-local.sh"
+ensure_env_local "${ROOT_DIR}"
+load_env_local "${ROOT_DIR}"
+
 mkdir -p reports
 LOG_FILE="reports/e2e-server.log"
 OUT_FILE="reports/e2e-session.txt"
 RUST_BIN="rust/input-guard/target/release/input-guard"
+
+if [[ -z "${LAB_PASSWORD_STUDENT:-}" ]]; then
+  echo "Falta LAB_PASSWORD_STUDENT. Ejecuta make generate-secrets." >&2
+  exit 1
+fi
 
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]]; then
@@ -26,7 +36,7 @@ sleep 2
 
 {
   sleep 0.5; echo "student"
-  sleep 0.5; echo "student123!"
+  sleep 0.5; echo "${LAB_PASSWORD_STUDENT}"
   sleep 0.5; echo "whoami"
   sleep 0.5; echo "audit json"
   sleep 0.5; echo "policy json"

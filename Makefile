@@ -6,10 +6,12 @@ RUST_MANIFEST=rust/input-guard/Cargo.toml
 RUST_BINARY=rust/input-guard/target/release/input-guard
 HELM_CHART=deploy/helm/sentinelops
 
-ENV_FILE ?=
+ENV_FILE ?= .env.local
 ifneq ($(strip $(ENV_FILE)),)
+ifneq (,$(wildcard $(ENV_FILE)))
 include $(ENV_FILE)
 export
+endif
 endif
 
 APP_ENV ?= dev
@@ -21,7 +23,11 @@ METRICS_ADDR ?= :9001
 APP_CONTROL_API_ENABLED ?= true
 APP_CONTROL_API_ADDR ?= :9443
 APP_CONTROL_API_USER ?= admin
-APP_CONTROL_API_PASSWORD ?= admin123!
+APP_CONTROL_API_PASSWORD ?=
+LAB_PASSWORD_STUDENT ?=
+LAB_PASSWORD_TEACHER ?=
+LAB_PASSWORD_AUDITOR ?=
+LAB_PASSWORD_ADMIN ?=
 APP_AUTH_RATE_LIMIT_ENABLED ?= true
 APP_AUTH_RATE_LIMIT_MAX_FAILURES ?= 5
 APP_AUTH_RATE_LIMIT_WINDOW ?= 1m
@@ -36,7 +42,7 @@ APP_SSH_REMOTE_FORWARD_ENABLED ?= false
 APP_SSH_REMOTE_BIND_ALLOWLIST ?= 127.0.0.1:10080,127.0.0.1:10443
 APP_SSH_REMOTE_ALLOWED_ROLES ?= teacher,auditor,admin
 
-.PHONY: help build build-client run run-tcp run-ssh ssh-lab-setup demo docker-demo curl-examples test rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-stop deploy-local cleanup
+.PHONY: help build build-client run run-tcp run-ssh ssh-lab-setup demo docker-demo curl-examples test rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-stop deploy-local cleanup
 
 help:
 	@echo "Targets disponibles:"
@@ -46,6 +52,7 @@ help:
 	@echo "  make run-tcp          - Ejecuta el servidor en modo TCP"
 	@echo "  make run-ssh          - Ejecuta el servidor en modo SSH"
 	@echo "  make ssh-lab-setup    - Genera llave de laboratorio y authorized_keys"
+	@echo "  make generate-secrets - Genera .env.local con credenciales aleatorias"
 	@echo "  make curl-examples    - Ejecuta ejemplos curl contra la API HTTPS"
 	@echo "  make demo             - Ejecuta una demostración guiada end-to-end"
 	@echo "  make test             - Ejecuta pruebas Go"
@@ -60,7 +67,8 @@ help:
 	@echo "  make helm-template    - Renderiza el chart Helm"
 	@echo "  make helm-install     - Despliega el chart Helm"
 	@echo "  make bootstrap        - Prepara entorno local"
-	@echo "  make setup-dev        - Instala dependencias de desarrollo en Ubuntu"
+	@echo "  make setup-dev        - Genera secretos y llaves para desarrollo"
+	@echo "  make install-dev-tools - Instala dependencias de desarrollo en Ubuntu"
 	@echo "  make e2e              - Ejecuta prueba end-to-end local TCP"
 	@echo "  make e2e-full         - Ejecuta validación E2E Docker con evidencias"
 	@echo "  make docker-build     - Construye imagen Docker"
@@ -143,7 +151,7 @@ ssh-lab-setup:
 	USER_NAME=$${USER_NAME:-student}; bash scripts/setup-ssh-lab.sh "$$USER_NAME"
 
 curl-examples:
-	API_URL=$${API_URL:-https://localhost:9443} API_USER=$${API_USER:-admin} API_PASSWORD=$${API_PASSWORD:-admin123!} bash scripts/control-api-curl-examples.sh
+	API_URL=$${API_URL:-https://localhost:9443} API_USER=$${API_USER:-admin} API_PASSWORD=$${API_PASSWORD:-$${APP_CONTROL_API_PASSWORD:-}} bash scripts/control-api-curl-examples.sh
 
 demo:
 	bash ./demo.sh
@@ -176,7 +184,7 @@ fmt:
 vet:
 	go vet ./...
 
-check: fmt vet test rust-test
+check: fmt vet test rust-test check-secrets
 
 audit:
 	PROFILE=$${PROFILE:-hardened}; python3 tools/audit/audit.py --profile "$$PROFILE" --project-root .
@@ -198,8 +206,18 @@ helm-install:
 bootstrap:
 	bash scripts/bootstrap.sh
 
-setup-dev:
+setup-dev: generate-secrets ssh-lab-setup
+	@echo "Entorno de desarrollo preparado."
+	@echo "Ejecuta: source .env.local && make run-ssh"
+
+install-dev-tools:
 	bash scripts/setup-dev-ubuntu.sh
+
+generate-secrets:
+	bash scripts/generate-secrets.sh
+
+check-secrets:
+	bash scripts/check-no-hardcoded-secrets.sh
 
 e2e:
 	bash scripts/test-e2e.sh
@@ -228,7 +246,11 @@ docker-run-tcp:
 		-e APP_CONTROL_API_ENABLED=true \
 		-e APP_CONTROL_API_ADDR=:9443 \
 		-e APP_CONTROL_API_USER=admin \
-		-e APP_CONTROL_API_PASSWORD=admin123! \
+		-e APP_CONTROL_API_PASSWORD=$${APP_CONTROL_API_PASSWORD:-} \
+		-e LAB_PASSWORD_STUDENT=$${LAB_PASSWORD_STUDENT:-} \
+		-e LAB_PASSWORD_TEACHER=$${LAB_PASSWORD_TEACHER:-} \
+		-e LAB_PASSWORD_AUDITOR=$${LAB_PASSWORD_AUDITOR:-} \
+		-e LAB_PASSWORD_ADMIN=$${LAB_PASSWORD_ADMIN:-} \
 		-e APP_AUTH_RATE_LIMIT_ENABLED=true \
 		-e APP_AUTH_RATE_LIMIT_MAX_FAILURES=5 \
 		-e APP_AUTH_RATE_LIMIT_WINDOW=1m \
@@ -262,7 +284,11 @@ docker-run-ssh:
 		-e APP_CONTROL_API_ENABLED=true \
 		-e APP_CONTROL_API_ADDR=:9443 \
 		-e APP_CONTROL_API_USER=admin \
-		-e APP_CONTROL_API_PASSWORD=admin123! \
+		-e APP_CONTROL_API_PASSWORD=$${APP_CONTROL_API_PASSWORD:-} \
+		-e LAB_PASSWORD_STUDENT=$${LAB_PASSWORD_STUDENT:-} \
+		-e LAB_PASSWORD_TEACHER=$${LAB_PASSWORD_TEACHER:-} \
+		-e LAB_PASSWORD_AUDITOR=$${LAB_PASSWORD_AUDITOR:-} \
+		-e LAB_PASSWORD_ADMIN=$${LAB_PASSWORD_ADMIN:-} \
 		-e APP_SSH_LOCAL_FORWARD_ENABLED=true \
 		-e APP_SSH_FORWARD_ALLOWLIST=127.0.0.1:9001,localhost:9001 \
 		-e APP_SSH_LOCAL_ALLOWED_ROLES=student,teacher,auditor,admin \
@@ -297,3 +323,4 @@ docker-stop:
 
 cleanup:
 	bash scripts/cleanup.sh
+	rm -f .env.local

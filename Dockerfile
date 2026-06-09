@@ -37,7 +37,7 @@ COPY deploy /app/deploy
 COPY env /app/env
 COPY README.md /app/README.md
 
-RUN chmod +x /app/bin/input-guard /app/bin/sentinelops-client && chown -R appuser:appgroup /app
+RUN chmod +x /app/bin/input-guard /app/bin/sentinelops-client /app/scripts/docker-entrypoint.sh && chown -R appuser:appgroup /app
 
 USER appuser
 
@@ -57,7 +57,6 @@ ENV METRICS_ADDR=:9001
 ENV APP_CONTROL_API_ENABLED=true
 ENV APP_CONTROL_API_ADDR=:9443
 ENV APP_CONTROL_API_USER=admin
-ENV APP_CONTROL_API_PASSWORD=admin123!
 ENV APP_CONTROL_API_CERT_PATH=/app/data/controlplane/tls.crt
 ENV APP_CONTROL_API_KEY_PATH=/app/data/controlplane/tls.key
 ENV LOG_LEVEL=info
@@ -88,4 +87,5 @@ ENV OPA_POLICY_ENABLED=true
 ENV OPA_BINARY=/app/bin/opa
 ENV OPA_POLICY_DIR=/app/policies/kubernetes
 
-ENTRYPOINT ["/app/sentinelops"]
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
+CMD ["/app/sentinelops"]

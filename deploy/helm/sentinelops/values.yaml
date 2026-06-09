@@ -55,11 +55,11 @@ config:
 secret:
   create: true
   existingSecret: ""
-  controlApiPassword: "admin123!"
-  authStudentPassword: "student123!"
-  authTeacherPassword: "teacher123!"
-  authAuditorPassword: "auditor123!"
-  authAdminPassword: "admin123!"
+  controlApiPassword: ""
+  authStudentPassword: ""
+  authTeacherPassword: ""
+  authAuditorPassword: ""
+  authAdminPassword: ""
 
 podAnnotations: {}
 

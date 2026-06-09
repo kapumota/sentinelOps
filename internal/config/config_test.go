@@ -1,12 +1,21 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
 
+func isolateEnvFile(t *testing.T) {
+	t.Helper()
+	t.Setenv("APP_ENV_FILE", filepath.Join(t.TempDir(), "missing.env"))
+	t.Setenv("APP_CONTROL_API_PASSWORD", "")
+	t.Setenv("APP_CONTROL_API_USER", "")
+}
+
 func TestLoadSecureDefaults(t *testing.T) {
+	isolateEnvFile(t)
 	t.Setenv("APP_SSH_REMOTE_FORWARD_ENABLED", "")
 	t.Setenv("EXTERNAL_VALIDATOR_FAIL_OPEN", "")
 	t.Setenv("APP_STATE_PERSISTENCE_ENABLED", "")
@@ -27,6 +36,7 @@ func TestLoadSecureDefaults(t *testing.T) {
 }
 
 func TestLoadBooleanOverrides(t *testing.T) {
+	isolateEnvFile(t)
 	t.Setenv("APP_SSH_REMOTE_FORWARD_ENABLED", "true")
 	t.Setenv("EXTERNAL_VALIDATOR_FAIL_OPEN", "true")
 	t.Setenv("APP_STATE_PERSISTENCE_ENABLED", "true")
@@ -44,6 +54,7 @@ func TestLoadBooleanOverrides(t *testing.T) {
 }
 
 func TestLoadRateLimitOverrides(t *testing.T) {
+	isolateEnvFile(t)
 	t.Setenv("APP_AUTH_RATE_LIMIT_ENABLED", "false")
 	t.Setenv("APP_AUTH_RATE_LIMIT_MAX_FAILURES", "7")
 	t.Setenv("APP_AUTH_RATE_LIMIT_WINDOW", "2m")
@@ -65,6 +76,7 @@ func TestLoadRateLimitOverrides(t *testing.T) {
 }
 
 func TestLoadStatePathDerivedFromDir(t *testing.T) {
+	isolateEnvFile(t)
 	t.Setenv("APP_STATE_PERSISTENCE_DIR", "/tmp/sentinelops-state")
 	t.Setenv("APP_STATE_SESSIONS_PATH", "")
 	t.Setenv("APP_STATE_TUNNELS_PATH", "")
@@ -75,5 +87,40 @@ func TestLoadStatePathDerivedFromDir(t *testing.T) {
 	}
 	if cfg.StateTunnelsPath != filepath.Join("/tmp/sentinelops-state", "tunnels.json") {
 		t.Fatalf("unexpected tunnels path: %s", cfg.StateTunnelsPath)
+	}
+}
+
+func TestLoadEnvFile(t *testing.T) {
+	dir := t.TempDir()
+	envFile := filepath.Join(dir, ".env.local")
+	content := "APP_CONTROL_API_PASSWORD=control-secret\nAPP_CONTROL_API_USER=operator\n"
+	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+	t.Setenv("APP_ENV_FILE", envFile)
+	t.Setenv("APP_CONTROL_API_PASSWORD", "")
+	t.Setenv("APP_CONTROL_API_USER", "")
+
+	cfg := Load()
+	if cfg.ControlAPIUser != "operator" {
+		t.Fatalf("expected control user from env file, got %s", cfg.ControlAPIUser)
+	}
+	if cfg.ControlAPIPassword != "control-secret" {
+		t.Fatal("expected control password from env file")
+	}
+}
+
+func TestLoadGeneratesRandomControlPassword(t *testing.T) {
+	isolateEnvFile(t)
+	t.Setenv("APP_CONTROL_API_PASSWORD", "")
+
+	cfg1 := Load()
+	cfg2 := Load()
+
+	if cfg1.ControlAPIPassword == "" || cfg2.ControlAPIPassword == "" {
+		t.Fatal("expected generated control API passwords")
+	}
+	if cfg1.ControlAPIPassword == cfg2.ControlAPIPassword {
+		t.Fatal("expected generated control API passwords to differ")
 	}
 }

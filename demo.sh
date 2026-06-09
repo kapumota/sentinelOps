@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT_DIR}"
 
+# shellcheck source=/dev/null
+source "${ROOT_DIR}/scripts/env-local.sh"
+ensure_env_local "${ROOT_DIR}"
+load_env_local "${ROOT_DIR}"
+
 USER_NAME="${USER_NAME:-student}"
 SSH_PORT="${SSH_PORT:-2222}"
 METRICS_PORT="${METRICS_PORT:-9001}"
@@ -11,7 +16,11 @@ API_PORT="${API_PORT:-9443}"
 FORWARD_PORT="${FORWARD_PORT:-9900}"
 API_URL="https://localhost:${API_PORT}"
 API_USER="${API_USER:-admin}"
-API_PASSWORD="${API_PASSWORD:-admin123!}"
+API_PASSWORD="${API_PASSWORD:-${APP_CONTROL_API_PASSWORD:-}}"
+if [[ -z "${API_PASSWORD}" ]]; then
+  echo "Falta API_PASSWORD o APP_CONTROL_API_PASSWORD. Ejecuta make generate-secrets." >&2
+  exit 1
+fi
 IDENTITY_FILE="data/ssh/client/${USER_NAME}_ed25519"
 KNOWN_HOSTS_FILE="data/ssh/client/demo_known_hosts"
 SERVER_LOG="reports/demo-server.log"

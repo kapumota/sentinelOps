@@ -22,6 +22,7 @@ import (
 )
 
 func TestSSHForwardingIntegration(t *testing.T) {
+	t.Setenv("LAB_PASSWORD_STUDENT", "student-secret")
 	sshAddr := freeTCPAddr(t)
 	targetAddr, stopEcho := startEchoServer(t)
 	defer stopEcho()
@@ -157,7 +158,7 @@ func dialSSH(t *testing.T, addr string) *ssh.Client {
 	t.Helper()
 	cfg := &ssh.ClientConfig{
 		User:            "student",
-		Auth:            []ssh.AuthMethod{ssh.Password("student123!")},
+		Auth:            []ssh.AuthMethod{ssh.Password("student-secret")},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Second,
 	}
