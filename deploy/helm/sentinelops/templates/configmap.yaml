@@ -28,6 +28,11 @@ data:
   EXTERNAL_VALIDATOR_BINARY: {{ .Values.config.externalValidatorBinary | quote }}
   EXTERNAL_VALIDATOR_FAIL_OPEN: {{ .Values.config.externalValidatorFailOpen | quote }}
   OPA_POLICY_ENABLED: {{ .Values.config.opaPolicyEnabled | quote }}
+  OPA_POLICY_MODE: {{ ternary "http" .Values.config.opaPolicyMode .Values.opaSidecar.enabled | quote }}
+  OPA_POLICY_URL: {{ ternary "http://localhost:8181" .Values.config.opaPolicyUrl .Values.opaSidecar.enabled | quote }}
+  OPA_POLICY_TIMEOUT: {{ .Values.config.opaPolicyTimeout | quote }}
+  OPA_POLICY_CACHE_ENABLED: {{ .Values.config.opaPolicyCacheEnabled | quote }}
+  OPA_POLICY_CACHE_TTL: {{ .Values.config.opaPolicyCacheTtl | quote }}
   OPA_BINARY: {{ .Values.config.opaBinary | quote }}
   OPA_POLICY_DIR: {{ .Values.config.opaPolicyDir | quote }}
   APP_CONTROL_API_ENABLED: {{ .Values.config.controlApiEnabled | quote }}

@@ -1282,3 +1282,80 @@ La fase 3 se considera válida cuando:
 - SentinelOps arranca con `OTEL_TRACES_ENABLED=true`.
 - Jaeger muestra spans del servicio `sentinelops`.
 - La API de control devuelve `X-Correlation-ID` y `X-Trace-ID`.
+
+### Validación de fase 4 - OPA sidecar runtime
+
+#### Objetivo
+
+Validar que SentinelOps pueda consultar OPA en runtime mediante HTTP, sin eliminar el modo anterior basado en el binario `opa eval`.
+
+#### Variables relevantes
+
+```env
+OPA_POLICY_ENABLED=true
+OPA_POLICY_MODE=http
+OPA_POLICY_URL=http://localhost:8181
+OPA_POLICY_TIMEOUT=2s
+OPA_POLICY_CACHE_ENABLED=true
+OPA_POLICY_CACHE_TTL=30s
+```
+
+#### Validación unitaria
+
+```bash
+make check-secrets
+make fmt
+make vet
+make test
+make rust-test
+```
+
+#### Validación Rego local
+
+```bash
+make opa-test
+make opa-build
+```
+
+#### Validación con sidecar OPA
+
+```bash
+make generate-secrets
+source .env.local
+make run-opa-sidecar
+```
+
+El target usa `HOST_UID` y `HOST_GID` para que el usuario dentro del contenedor pueda escribir en `./data`. Si SentinelOps queda reiniciando, inspecciona:
+
+```bash
+docker compose -f docker-compose.opa.yml ps
+docker compose -f docker-compose.opa.yml logs --tail=200 sentinelops
+```
+
+Verificar OPA:
+
+```bash
+curl -s http://localhost:8181/health
+```
+
+Verificar SentinelOps:
+
+```bash
+curl -k https://localhost:9445/healthz
+```
+
+Ejecutar el comando de política dentro del flujo del servidor permite validar que SentinelOps consulte el sidecar cuando `OPA_POLICY_MODE=http`.
+
+#### Resultado esperado
+
+```text
+OPA responde por HTTP en :8181
+SentinelOps arranca con OPA_POLICY_MODE=http
+El modo exec sigue disponible con OPA_POLICY_MODE=exec
+```
+
+#### Limpieza
+
+```bash
+make stop-opa-sidecar
+```

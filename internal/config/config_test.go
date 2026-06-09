@@ -124,3 +124,55 @@ func TestLoadGeneratesRandomControlPassword(t *testing.T) {
 		t.Fatal("expected generated control API passwords to differ")
 	}
 }
+
+func TestLoadPolicySidecarDefaults(t *testing.T) {
+	isolateEnvFile(t)
+	t.Setenv("OPA_POLICY_MODE", "")
+	t.Setenv("OPA_POLICY_URL", "")
+	t.Setenv("OPA_POLICY_TIMEOUT", "")
+	t.Setenv("OPA_POLICY_CACHE_ENABLED", "")
+	t.Setenv("OPA_POLICY_CACHE_TTL", "")
+
+	cfg := Load()
+	if cfg.PolicyMode != "exec" {
+		t.Fatalf("expected default OPA policy mode exec, got %s", cfg.PolicyMode)
+	}
+	if cfg.PolicyURL != "http://localhost:8181" {
+		t.Fatalf("unexpected OPA policy URL: %s", cfg.PolicyURL)
+	}
+	if cfg.PolicyTimeout != 2*time.Second {
+		t.Fatalf("unexpected OPA policy timeout: %s", cfg.PolicyTimeout)
+	}
+	if !cfg.PolicyCacheEnabled {
+		t.Fatal("expected OPA policy cache enabled by default")
+	}
+	if cfg.PolicyCacheTTL != 30*time.Second {
+		t.Fatalf("unexpected OPA policy cache TTL: %s", cfg.PolicyCacheTTL)
+	}
+}
+
+func TestLoadPolicySidecarOverrides(t *testing.T) {
+	isolateEnvFile(t)
+	t.Setenv("OPA_POLICY_MODE", "http")
+	t.Setenv("OPA_POLICY_URL", "http://opa:8181")
+	t.Setenv("OPA_POLICY_TIMEOUT", "5s")
+	t.Setenv("OPA_POLICY_CACHE_ENABLED", "false")
+	t.Setenv("OPA_POLICY_CACHE_TTL", "2m")
+
+	cfg := Load()
+	if cfg.PolicyMode != "http" {
+		t.Fatalf("expected OPA policy mode http, got %s", cfg.PolicyMode)
+	}
+	if cfg.PolicyURL != "http://opa:8181" {
+		t.Fatalf("unexpected OPA policy URL: %s", cfg.PolicyURL)
+	}
+	if cfg.PolicyTimeout != 5*time.Second {
+		t.Fatalf("unexpected OPA policy timeout: %s", cfg.PolicyTimeout)
+	}
+	if cfg.PolicyCacheEnabled {
+		t.Fatal("expected OPA policy cache override to disable cache")
+	}
+	if cfg.PolicyCacheTTL != 2*time.Minute {
+		t.Fatalf("unexpected OPA policy cache TTL: %s", cfg.PolicyCacheTTL)
+	}
+}

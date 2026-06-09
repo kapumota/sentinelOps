@@ -68,9 +68,36 @@ spec:
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           {{- end }}
+        {{- if .Values.opaSidecar.enabled }}
+        - name: opa
+          image: {{ .Values.opaSidecar.image | quote }}
+          args:
+            - run
+            - --server
+            - --addr=0.0.0.0:8181
+            - --log-level={{ .Values.opaSidecar.logLevel }}
+            - --log-format=json
+            - --set=decision_logs.console=true
+            - /policies
+          ports:
+            - name: opa
+              containerPort: 8181
+              protocol: TCP
+          volumeMounts:
+            - name: opa-policies
+              mountPath: /policies
+              readOnly: true
+          resources:
+            {{- toYaml .Values.opaSidecar.resources | nindent 12 }}
+        {{- end }}
       volumes:
         - name: app-data
           emptyDir: {}
+        {{- if .Values.opaSidecar.enabled }}
+        - name: opa-policies
+          configMap:
+            name: {{ include "sentinelops.fullname" . }}-opa-policies
+        {{- end }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
       tolerations:

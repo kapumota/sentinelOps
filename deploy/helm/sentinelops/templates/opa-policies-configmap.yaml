@@ -1,0 +1,58 @@
+{{- if .Values.opaSidecar.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sentinelops.fullname" . }}-opa-policies
+  labels:
+    {{- include "sentinelops.labels" . | nindent 4 }}
+data:
+  no_latest.rego: |
+    package kubernetes.security
+
+    import rego.v1
+
+    deny contains msg if {
+      input.kind == "Deployment"
+      container := input.spec.template.spec.containers[_]
+      endswith(container.image, ":latest")
+      msg := sprintf("container %s uses forbidden mutable tag latest", [container.name])
+    }
+
+  no_privileged.rego: |
+    package kubernetes.security
+
+    import rego.v1
+
+    deny contains msg if {
+      input.kind == "Deployment"
+      container := input.spec.template.spec.containers[_]
+      container.securityContext.privileged == true
+      msg := sprintf("container %s must not run as privileged", [container.name])
+    }
+
+  require_security_context.rego: |
+    package kubernetes.security
+
+    import rego.v1
+
+    deny contains msg if {
+      input.kind == "Deployment"
+      container := input.spec.template.spec.containers[_]
+      not container.securityContext.runAsNonRoot
+      msg := sprintf("container %s must enforce runAsNonRoot", [container.name])
+    }
+
+    deny contains msg if {
+      input.kind == "Deployment"
+      container := input.spec.template.spec.containers[_]
+      container.securityContext.allowPrivilegeEscalation == true
+      msg := sprintf("container %s must set allowPrivilegeEscalation=false", [container.name])
+    }
+
+    warn contains msg if {
+      input.kind == "Deployment"
+      container := input.spec.template.spec.containers[_]
+      not container.securityContext.readOnlyRootFilesystem
+      msg := sprintf("container %s should use readOnlyRootFilesystem", [container.name])
+    }
+{{- end }}

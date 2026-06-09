@@ -1,0 +1,72 @@
+services:
+  opa:
+    image: openpolicyagent/opa:0.67.1-static
+    container_name: sentinelops-opa
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --log-level=info
+      - --log-format=json
+      - --set=decision_logs.console=true
+      - /policies
+    ports:
+      - "${OPA_PORT:-8181}:8181"
+    volumes:
+      - ./policies/kubernetes:/policies/kubernetes:ro
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 5s
+    networks:
+      - sentinelops-net
+
+  sentinelops:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_UID: "${HOST_UID:-1000}"
+        APP_GID: "${HOST_GID:-1000}"
+    container_name: sentinelops-opa-demo
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    env_file:
+      - env/container-ssh.env
+      - .env.local
+    environment:
+      APP_ENV: container
+      APP_TRANSPORT: ssh
+      APP_SSH_HOST_KEY_PATH: /app/data/ssh/host_ed25519_key
+      APP_CONTROL_API_CERT_PATH: /app/data/controlplane/tls.crt
+      APP_CONTROL_API_KEY_PATH: /app/data/controlplane/tls.key
+      APP_STATE_PERSISTENCE_DIR: /app/data/state
+      APP_STATE_SESSIONS_PATH: /app/data/state/sessions.json
+      APP_STATE_TUNNELS_PATH: /app/data/state/tunnels.json
+      EXTERNAL_AUDIT_SCRIPT: /app/tools/audit/audit.py
+      EXTERNAL_VALIDATOR_BINARY: /app/bin/input-guard
+      OPA_BINARY: /app/bin/opa
+      OPA_POLICY_DIR: /app/policies/kubernetes
+      OPA_POLICY_ENABLED: "true"
+      OPA_POLICY_MODE: http
+      OPA_POLICY_URL: http://opa:8181
+      OPA_POLICY_TIMEOUT: 2s
+      OPA_POLICY_CACHE_ENABLED: "true"
+      OPA_POLICY_CACHE_TTL: 30s
+      APP_SSH_REMOTE_FORWARD_ENABLED: "true"
+    depends_on:
+      - opa
+    ports:
+      - "${SSH_PORT:-2224}:2222"
+      - "${METRICS_PORT:-9102}:9001"
+      - "${API_PORT:-9445}:9443"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 10s
+    networks:
+      - sentinelops-net
+
+networks:
+  sentinelops-net:
+    name: sentinelops-net

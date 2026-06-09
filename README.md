@@ -1496,3 +1496,92 @@ X-Trace-ID
 ```
 
 Esto permite relacionar una solicitud HTTP con su traza correspondiente en Jaeger.
+
+### Fase 4 - OPA como sidecar runtime
+
+La fase 4 permite evaluar políticas OPA en runtime mediante HTTP contra un sidecar OPA. El modo anterior con binario local se mantiene para CI, auditorías offline y laboratorios sin Docker.
+
+#### Modos de política
+
+```text
+OPA_POLICY_MODE=exec   usa el binario OPA local
+OPA_POLICY_MODE=http   consulta un OPA sidecar por HTTP
+```
+
+El modo por defecto sigue siendo:
+
+```env
+OPA_POLICY_MODE=exec
+```
+
+Esto evita que OPA como servicio externo sea obligatorio durante pruebas unitarias o ejecución local básica.
+
+#### Ejecutar OPA sidecar local
+
+Primero genera secretos locales si no existen:
+
+```bash
+make generate-secrets
+```
+
+Luego levanta SentinelOps con OPA como sidecar simulado en Docker Compose:
+
+```bash
+source .env.local
+make run-opa-sidecar
+```
+
+El target pasa `HOST_UID` y `HOST_GID` al build y al runtime del contenedor. Esto permite que SentinelOps escriba claves SSH, certificados TLS y estado dentro de `./data` cuando se usa bind mount local.
+
+Si el contenedor `sentinelops-opa-demo` queda en `Restarting`, revisa permisos y logs:
+
+```bash
+docker compose -f docker-compose.opa.yml ps
+docker compose -f docker-compose.opa.yml logs --tail=200 sentinelops
+```
+
+Servicios expuestos:
+
+```text
+OPA sidecar: http://localhost:8181
+SentinelOps SSH: localhost:2224
+SentinelOps métricas: http://localhost:9102/metrics
+SentinelOps API: https://localhost:9445/healthz
+```
+
+#### Consultar OPA directamente
+
+```bash
+curl -s http://localhost:8181/health
+```
+
+Validar una decisión de política:
+
+```bash
+curl -s -X POST http://localhost:8181/v1/data/kubernetes/security/deny \
+  -H 'Content-Type: application/json' \
+  -d '{"input":{"kind":"Deployment","spec":{"template":{"spec":{"containers":[{"name":"server","image":"sentinelops:latest","securityContext":{"privileged":true,"runAsNonRoot":false,"allowPrivilegeEscalation":true,"readOnlyRootFilesystem":false}}]}}}}}'
+```
+
+#### Ejecutar SentinelOps local contra OPA HTTP
+
+Si OPA ya está corriendo en `localhost:8181`, también puedes ejecutar SentinelOps fuera de Docker:
+
+```bash
+source .env.local
+OPA_POLICY_MODE=http \
+OPA_POLICY_URL=http://localhost:8181 \
+make run-ssh
+```
+
+#### Volver al modo binario
+
+```bash
+OPA_POLICY_MODE=exec make run-ssh
+```
+
+#### Limpieza
+
+```bash
+make stop-opa-sidecar
+```

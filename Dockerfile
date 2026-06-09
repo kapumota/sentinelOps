@@ -21,7 +21,10 @@ LABEL org.opencontainers.image.title="sentinelops" \
       org.opencontainers.image.version="2.4.1" \
       org.opencontainers.image.description="SentinelOps secure remote access lab"
 RUN apk add --no-cache python3 openssh-client curl
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+ARG APP_UID=1000
+ARG APP_GID=1000
+# El UID/GID se alinea con el usuario local para que los bind mounts sean escribibles.
+RUN addgroup -S -g ${APP_GID} appgroup && adduser -S -D -H -u ${APP_UID} -G appgroup appuser
 
 WORKDIR /app
 RUN mkdir -p /app/bin /app/reports /app/data/controlplane /app/data/state /app/data/ssh/authorized_keys /app/data/ssh/client
@@ -84,8 +87,13 @@ ENV EXTERNAL_VALIDATOR_ENABLED=true
 ENV EXTERNAL_VALIDATOR_BINARY=/app/bin/input-guard
 ENV EXTERNAL_VALIDATOR_FAIL_OPEN=false
 ENV OPA_POLICY_ENABLED=true
+ENV OPA_POLICY_MODE=exec
 ENV OPA_BINARY=/app/bin/opa
 ENV OPA_POLICY_DIR=/app/policies/kubernetes
+ENV OPA_POLICY_URL=http://localhost:8181
+ENV OPA_POLICY_TIMEOUT=2s
+ENV OPA_POLICY_CACHE_ENABLED=true
+ENV OPA_POLICY_CACHE_TTL=30s
 
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["/app/sentinelops"]
