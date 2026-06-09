@@ -407,6 +407,32 @@ make vet
 make test
 ```
 
+#### Pruebas por nivel
+
+La fase 2 separa las pruebas en niveles para mantener ciclos rápidos de desarrollo y pruebas de integración reproducibles.
+
+```bash
+make test-unit
+make test-integration
+make test-race
+make test-coverage
+```
+
+`make test-integration` usa `testcontainers-go` y requiere Docker activo. Las pruebas de integración están protegidas con el build tag `containers`, por lo que `make test` sigue ejecutando la suite rápida por defecto.
+
+#### Ryuk en entorno local
+
+El target `make test-integration` desactiva Ryuk con `TESTCONTAINERS_RYUK_DISABLED=true` para evitar fallos locales cuando Docker no permite iniciar el contenedor reaper. Las pruebas llaman a `Terminate` sobre cada contenedor creado, por lo que la limpieza normal sigue ocurriendo al cerrar cada test.
+
+Si se desea probar con Ryuk explícitamente, puede ejecutarse el comando manualmente sin esa variable de entorno o configurando Docker para permitir el contenedor reaper.
+
+Para el E2E de imagen completa se debe indicar una imagen local o publicada:
+
+```bash
+docker build -t sentinelops:e2e .
+SENTINELOPS_E2E_IMAGE=sentinelops:e2e make test-e2e-containers
+```
+
 #### Pruebas Rust
 
 ```bash

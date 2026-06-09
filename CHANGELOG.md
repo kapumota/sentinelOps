@@ -1,5 +1,17 @@
 ### Changelog
 
+### Unreleased - fase 2 tests de integración
+
+#### Agregado
+- Targets `test-unit`, `test-integration`, `test-race`, `test-coverage`, `test-all` y `test-e2e-containers`.
+- Helpers compartidos para pruebas con `testcontainers-go`.
+- Pruebas de integración para autenticación, rate limiting, sesiones, forwarding y métricas.
+- Workflow `sentinelops-tests` con jobs de unit tests, integración, race detector y E2E manual.
+
+#### Mejorado
+- Las pruebas que requieren Docker usan el build tag `containers` para no afectar la suite rápida `make test`.
+- El E2E de imagen completa queda parametrizado con `SENTINELOPS_E2E_IMAGE`.
+
 ### Unreleased - fase 1 secrets dinámicos
 
 #### Corregido

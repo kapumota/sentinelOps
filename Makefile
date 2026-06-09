@@ -42,7 +42,7 @@ APP_SSH_REMOTE_FORWARD_ENABLED ?= false
 APP_SSH_REMOTE_BIND_ALLOWLIST ?= 127.0.0.1:10080,127.0.0.1:10443
 APP_SSH_REMOTE_ALLOWED_ROLES ?= teacher,auditor,admin
 
-.PHONY: help build build-client run run-tcp run-ssh ssh-lab-setup demo docker-demo curl-examples test rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-stop deploy-local cleanup
+.PHONY: help build build-client run run-tcp run-ssh ssh-lab-setup demo docker-demo curl-examples test test-unit test-integration test-race test-coverage test-all test-e2e-containers rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-stop deploy-local cleanup
 
 help:
 	@echo "Targets disponibles:"
@@ -56,6 +56,12 @@ help:
 	@echo "  make curl-examples    - Ejecuta ejemplos curl contra la API HTTPS"
 	@echo "  make demo             - Ejecuta una demostración guiada end-to-end"
 	@echo "  make test             - Ejecuta pruebas Go"
+	@echo "  make test-unit        - Ejecuta pruebas unitarias rápidas"
+	@echo "  make test-integration - Ejecuta pruebas de integración con testcontainers"
+	@echo "  make test-race        - Ejecuta pruebas Go con detector de carreras"
+	@echo "  make test-coverage    - Genera reporte de cobertura Go"
+	@echo "  make test-all         - Ejecuta pruebas unitarias, integración y race detector"
+	@echo "  make test-e2e-containers - Ejecuta E2E con imagen Docker y testcontainers"
 	@echo "  make rust-test        - Ejecuta pruebas Rust"
 	@echo "  make rust-build       - Compila el binario Rust"
 	@echo "  make fmt              - Formatea el código Go"
@@ -170,6 +176,27 @@ docker-demo-logs:
 
 test:
 	go test ./...
+
+test-unit:
+	go test -short -v ./internal/... ./cmd/...
+
+test-integration:
+	TESTCONTAINERS_RYUK_DISABLED=true go test -tags=containers -v -run Integration ./internal/...
+	cd tests/integration && TESTCONTAINERS_RYUK_DISABLED=true go test -tags=containers -v -timeout 3m .
+
+test-race:
+	go test -race -v ./internal/...
+
+test-coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Reporte de cobertura generado en coverage.html"
+
+test-all: test-unit test-integration test-race
+	@echo "Todas las pruebas configuradas pasaron."
+
+test-e2e-containers:
+	cd tests/integration && TESTCONTAINERS_RYUK_DISABLED=true go test -tags=containers -v -run E2E -timeout 5m .
 
 rust-test:
 	cargo test --manifest-path $(RUST_MANIFEST)
