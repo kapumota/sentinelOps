@@ -1,0 +1,15 @@
+name: Security Scan
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  hardcoded-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check hardcoded laboratory credentials
+        run: bash scripts/check-no-hardcoded-secrets.sh

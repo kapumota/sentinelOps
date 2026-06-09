@@ -4,10 +4,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+# shellcheck source=/dev/null
+source "${ROOT_DIR}/scripts/env-local.sh"
+ensure_env_local "${ROOT_DIR}"
+load_env_local "${ROOT_DIR}"
+
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.demo.yml}"
 API_URL="${API_URL:-https://localhost:9443}"
 API_USER="${API_USER:-admin}"
-API_PASSWORD="${API_PASSWORD:-admin123!}"
+API_PASSWORD="${API_PASSWORD:-${APP_CONTROL_API_PASSWORD:-}}"
+if [[ -z "${API_PASSWORD}" ]]; then
+  echo "Falta API_PASSWORD o APP_CONTROL_API_PASSWORD. Ejecuta make generate-secrets." >&2
+  exit 1
+fi
 FORWARD_PORT="${FORWARD_PORT:-9900}"
 LOCAL_USER="${LOCAL_USER:-student}"
 REMOTE_USER="${REMOTE_USER:-teacher}"

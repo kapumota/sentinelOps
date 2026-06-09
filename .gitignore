@@ -1,19 +1,22 @@
 # Construcciones y salidas compiladas
 bin/
 dist/
+tmp/
 coverage.out
+coverage.html
+
+# Entorno local y secretos
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
 
 # Datos de ejecución e informes
 data/
 reports/*
 !reports/.gitkeep
 *.log
-
-# Herramientas locales
-.DS_Store
-.env
-.env.*
-!.env.example
 
 # Rust
 rust/input-guard/target/
@@ -29,3 +32,10 @@ __pycache__/
 *.key
 *.pem
 .tmp/
+
+# IDE y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

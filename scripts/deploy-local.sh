@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+# shellcheck source=/dev/null
+source "${ROOT_DIR}/scripts/env-local.sh"
+ensure_env_local "${ROOT_DIR}"
+load_env_local "${ROOT_DIR}"
+
 PROFILE="${1:-hardened}"
 TRANSPORT="${2:-ssh}"
 IMAGE="sentinelops:local"
@@ -31,7 +36,11 @@ if [[ "${TRANSPORT}" == "ssh" ]]; then
     -e APP_CONTROL_API_ENABLED=true \
     -e APP_CONTROL_API_ADDR=:9443 \
     -e APP_CONTROL_API_USER=admin \
-    -e APP_CONTROL_API_PASSWORD=admin123! \
+    -e APP_CONTROL_API_PASSWORD="${APP_CONTROL_API_PASSWORD:-}" \
+    -e LAB_PASSWORD_STUDENT="${LAB_PASSWORD_STUDENT:-}" \
+    -e LAB_PASSWORD_TEACHER="${LAB_PASSWORD_TEACHER:-}" \
+    -e LAB_PASSWORD_AUDITOR="${LAB_PASSWORD_AUDITOR:-}" \
+    -e LAB_PASSWORD_ADMIN="${LAB_PASSWORD_ADMIN:-}" \
     -e APP_CONTROL_API_CERT_PATH=/app/data/controlplane/tls.crt \
     -e APP_CONTROL_API_KEY_PATH=/app/data/controlplane/tls.key \
     -e APP_SSH_LOCAL_FORWARD_ENABLED=true \
@@ -70,7 +79,11 @@ else
     -e APP_CONTROL_API_ENABLED=true \
     -e APP_CONTROL_API_ADDR=:9443 \
     -e APP_CONTROL_API_USER=admin \
-    -e APP_CONTROL_API_PASSWORD=admin123! \
+    -e APP_CONTROL_API_PASSWORD="${APP_CONTROL_API_PASSWORD:-}" \
+    -e LAB_PASSWORD_STUDENT="${LAB_PASSWORD_STUDENT:-}" \
+    -e LAB_PASSWORD_TEACHER="${LAB_PASSWORD_TEACHER:-}" \
+    -e LAB_PASSWORD_AUDITOR="${LAB_PASSWORD_AUDITOR:-}" \
+    -e LAB_PASSWORD_ADMIN="${LAB_PASSWORD_ADMIN:-}" \
     -e APP_CONTROL_API_CERT_PATH=/app/data/controlplane/tls.crt \
     -e APP_CONTROL_API_KEY_PATH=/app/data/controlplane/tls.key \
     -e EXTERNAL_AUDIT_ENABLED=true \

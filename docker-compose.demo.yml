@@ -6,6 +6,7 @@ services:
     container_name: sentinelops
     env_file:
       - env/container-ssh.env
+      - .env.local
     environment:
       # El demo E2E activa reenvío remoto de forma explícita; el default hardened sigue siendo false.
       APP_SSH_REMOTE_FORWARD_ENABLED: "true"
