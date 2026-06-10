@@ -8,7 +8,7 @@
 [![CodeQL](https://github.com/kapumota/sentinelOps/actions/workflows/codeql.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/codeql.yml)
 [![Release](https://github.com/kapumota/sentinelOps/actions/workflows/release.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/release.yml)
 [![GitHub release](https://img.shields.io/github/v/release/kapumota/sentinelOps?include_prereleases&sort=semver)](https://github.com/kapumota/sentinelOps/releases)
-[![GitHub tag](https://img.shields.io/github/v/tag/kapumota/sentinelOps?sort=semver)](https://github.com/kapumota/sentinelOps/tags)
+![tag](https://img.shields.io/badge/tag-v1.0.0-blue)
 [![Last commit](https://img.shields.io/github/last-commit/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps/commits/main)
 [![Repo size](https://img.shields.io/github/repo-size/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps)
 [![Languages](https://img.shields.io/github/languages/count/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps)
