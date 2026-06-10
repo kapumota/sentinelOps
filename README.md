@@ -149,7 +149,7 @@ make run-ssh
 Para revisar las contraseñas activas del entorno local:
 
 ```bash
-grep 'PASSWORD' .env.local
+grep -E 'PASSWORD|USER' .env.local | sed 's/=.*/=<redacted>/'
 ```
 
 #### API de control
@@ -205,7 +205,7 @@ El proyecto integra varias capas defensivas:
 - auditoría externa en Python,
 - policy as code con OPA y Rego,
 - perfiles `hardened` e `insecure`,
-- rate limiting de login por usuario y origen.
+- rate limiting de login por usuario y origen,
 - control de túneles SSH por rol y allowlist.
 
 #### Observabilidad y administración
@@ -892,7 +892,7 @@ El servicio `sentinelops-tester` contiene herramientas como:
 
 Sirve para pruebas E2E y validación reproducible.
 
-#### Verifica  docker-compose.demo.yml
+#### Verifica docker-compose.demo.yml
 
 El servicio `sentinelops` debe publicar puertos con variables:
 
@@ -967,7 +967,7 @@ ssh -T -p 2223 -i data/ssh/client/student_ed25519 student@localhost
 docker exec -it sentinelops-tester sh
 ```
 
-Dentro, escribe los siguiente:
+Dentro, escribe lo siguiente:
 
 ```sh
 curl -k https://sentinelops:9443/healthz
@@ -1440,6 +1440,66 @@ El proyecto demuestra:
 
 Es **laboratorio técnico reproducible para DevSecOps, seguridad defensiva, observabilidad, policy as code y despliegue cloud native.**
 
+### Evolución por fases
+
+Las fases siguientes documentan la evolución técnica consolidada en `v1.0.0`. Cada fase queda descrita con objetivo, componentes principales, comandos de validación y resultado esperado.
+
+### Fase 1 - Secretos dinámicos y limpieza de credenciales
+
+#### Objetivo
+
+La fase 1 elimina credenciales fijas del repositorio y agrega generación local de secretos para entornos de laboratorio. El objetivo es que el proyecto pueda ejecutarse de forma reproducible sin versionar contraseñas, certificados ni claves privadas.
+
+#### Componentes agregados
+
+| Componente | Uso |
+|---|---|
+| `.env.local` generado | Variables locales no versionadas |
+| `make generate-secrets` | Generación de credenciales de laboratorio |
+| `make setup-dev` | Preparación inicial del entorno |
+| `make check-secrets` | Revisión básica para evitar secretos versionados |
+
+#### Comandos
+
+```bash
+make generate-secrets
+make setup-dev
+make check-secrets
+```
+
+#### Resultado
+
+Las credenciales quedan fuera del control de versiones y se cargan desde archivos locales o variables de entorno. Esta fase define la base de seguridad mínima para las fases posteriores.
+
+### Fase 2 - Tests de integración con testcontainers
+
+#### Objetivo
+
+La fase 2 separa pruebas unitarias, pruebas de integración, pruebas con race detector y cobertura. Esto mantiene ciclos rápidos durante el desarrollo y permite pruebas reproducibles con Docker cuando se requiere validar integración real.
+
+#### Componentes agregados
+
+| Componente | Uso |
+|---|---|
+| `make test-unit` | Pruebas rápidas sin contenedores |
+| `make test-integration` | Pruebas con `testcontainers-go` |
+| `make test-race` | Validación de concurrencia |
+| `make test-coverage` | Reporte de cobertura |
+| `tests/integration` | Pruebas de integración reproducibles |
+
+#### Comandos
+
+```bash
+make test-unit
+make test-integration
+make test-race
+make test-coverage
+```
+
+#### Resultado
+
+La suite rápida sigue disponible con `make test`, mientras que las pruebas con contenedores se ejecutan de forma explícita. Esta fase deja preparada la base de validación para Docker, observabilidad, API y despliegue.
+
 ### Fase 3 - Observabilidad con OpenTelemetry
 
 #### Objetivo
@@ -1565,6 +1625,8 @@ Esto permite relacionar una solicitud HTTP con su traza correspondiente en Jaege
 
 ### Fase 4 - OPA como sidecar runtime
 
+#### Objetivo
+
 La fase 4 permite evaluar políticas OPA en runtime mediante HTTP contra un sidecar OPA. El modo anterior con binario local se mantiene para CI, auditorías offline y laboratorios sin Docker.
 
 #### Modos de política
@@ -1653,6 +1715,8 @@ make stop-opa-sidecar
 ```
 
 ### Fase 5 - OpenAPI y versionado de API
+
+#### Objetivo
 
 La fase 5 agrega una superficie HTTP versionada para la API administrativa y documentación OpenAPI sin reemplazar los endpoints legados.
 
@@ -1861,7 +1925,7 @@ go mod tidy
 
 Solo versiona `go.mod` y `go.sum` si decides hacer obligatorio el modo gRPC en una fase posterior. En esta fase, `gen/go` sigue siendo artefacto generado.
 
-### Fase 7: CI/CD DevSecOps
+### Fase 7 - CI/CD DevSecOps
 
 #### Objetivo
 
@@ -1899,16 +1963,11 @@ coverage.out
 coverage.html
 ```
 
-#### Release de fase 7
+#### Nota histórica
 
-Después de mergear la fase 7 en `main`, se puede crear el tag:
+La fase 7 fue etiquetada durante el desarrollo como `v0.7.0-fase7-ci-cd-devsecops`. En `v1.0.0`, esta fase queda consolidada dentro de la línea estable y no requiere un tag adicional desde este README.
 
-```bash
-git tag -a v0.7.0-fase7-ci-cd-devsecops -m "fase 7: CI/CD DevSecOps"
-git push origin v0.7.0-fase7-ci-cd-devsecops
-```
-
-### Fase 8: observabilidad operacional y evidencia runtime
+### Fase 8 - Observabilidad operacional y evidencia runtime
 
 #### Objetivo
 
@@ -1952,7 +2011,7 @@ reports/runtime/<timestamp>/
 ```
 
 El reporte incluye métricas, health checks, estado autenticado si hay contraseña configurada, targets de Prometheus, estado de Grafana, servicios de Jaeger y estado de contenedores.
-### Fase 9: persistencia PostgreSQL y Redis
+### Fase 9 - Persistencia PostgreSQL y Redis
 
 #### Objetivo
 
@@ -1972,18 +2031,22 @@ La fase 9 agrega una abstracción de almacenamiento para sesiones, túneles, aud
 
 #### Comandos
 
-    make generate-secrets
-    make storage-up
-    source .env.local
-    make storage-smoke
-    make storage-test
-    make storage-down
+```bash
+make generate-secrets
+make storage-up
+source .env.local
+make storage-smoke
+make storage-test
+make storage-down
+```
 
 #### Limpieza
 
-    make storage-clean
+```bash
+make storage-clean
+```
 
-### Fase 9.1: hardening de alertas de seguridad
+### Fase 9.1 - Hardening de alertas de seguridad
 
 #### Objetivo
 
@@ -2015,7 +2078,7 @@ La explicación de alertas, criterios de aceptación y validación se encuentra 
 docs/security/alertas-code-scanning.md
 ```
 
-### Fase 10: benchmarks de rendimiento
+### Fase 10 - Benchmarks de rendimiento
 
 #### Objetivo
 
@@ -2023,28 +2086,36 @@ La fase 10 agrega benchmarks reproducibles para medir throughput de conexiones T
 
 #### Comandos
 
-    make benchmarks
-    make benchmark-network
-    make benchmark-validator
-    make benchmark-opa
-    make benchmarks-summary
-    make benchmarks-clean
+```bash
+make benchmarks
+make benchmark-network
+make benchmark-validator
+make benchmark-opa
+make benchmarks-summary
+make benchmarks-clean
+```
 
 #### Reportes
 
 Los reportes locales se generan en:
 
-    reports/benchmarks/<timestamp>/
+```text
+reports/benchmarks/<timestamp>/
+```
 
 Los reportes generados no se versionan. La documentación base está en:
 
-    docs/benchmarks/resultados.md
-    docs/runbooks/benchmarks-rendimiento.md
+```text
+docs/benchmarks/resultados.md
+docs/runbooks/benchmarks-rendimiento.md
+```
 
 #### Benchmark Rust gRPC
 
 Para medir el validador Rust gRPC se debe levantar el servicio y definir:
 
-    BENCH_VALIDATOR_GRPC_ADDR=127.0.0.1:50051
+```bash
+BENCH_VALIDATOR_GRPC_ADDR=127.0.0.1:50051
+```
 
 Si esa variable no existe, el benchmark gRPC se omite y se mantiene la medición Go nativa.
