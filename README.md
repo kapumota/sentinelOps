@@ -1667,3 +1667,130 @@ Para el stack con OPA sidecar, usa el puerto externo `9445`:
 ```bash
 API_URL=https://localhost:9445 make api-smoke
 ```
+
+### Fase 6 - Validador Rust gRPC
+
+#### Objetivo
+
+La fase 6 agrega una ruta de evolución para ejecutar `input-guard` como servicio gRPC. El modo por defecto sigue siendo `binary`, por lo que `make test`, `make rust-test` y el flujo local existente no dependen de gRPC.
+
+#### Arquitectura
+
+```text
+SentinelOps Go -> gRPC -> input-guard-grpc Rust
+```
+
+El servicio gRPC escucha por defecto en:
+
+```text
+0.0.0.0:50051
+```
+
+La API Go conserva el validador estático y el validador externo por binario como fallback. El modo gRPC se activa de forma explícita con:
+
+```env
+VALIDATOR_MODE=grpc
+VALIDATOR_GRPC_ADDR=localhost:50051
+VALIDATOR_GRPC_TIMEOUT=2s
+VALIDATOR_GRPC_FAIL_OPEN=false
+```
+
+#### Proto
+
+El contrato se define en:
+
+```text
+proto/validator/v1/validator.proto
+```
+
+El servicio principal es:
+
+```text
+validator.v1.Validator
+```
+
+con estos métodos:
+
+```text
+ValidateInput
+Health
+```
+
+#### Construir el servidor Rust gRPC
+
+```bash
+make validator-grpc-build
+```
+
+#### Probar el servidor Rust gRPC
+
+```bash
+make validator-grpc-test
+```
+
+#### Levantar stack Docker con gRPC
+
+```bash
+source .env.local
+make validator-grpc-up
+```
+
+En otra terminal:
+
+```bash
+source .env.local
+API_URL=https://localhost:9446 make validator-grpc-smoke
+```
+
+Luego detener:
+
+```bash
+make validator-grpc-down
+```
+
+#### Generar código Go desde proto
+
+La generación de cliente Go es opcional y requiere herramientas locales:
+
+```bash
+make proto-tools
+make proto-go
+```
+
+El código generado queda en:
+
+```text
+gen/go
+```
+
+Ese directorio se considera artefacto generado y no se versiona.
+
+#### Compatibilidad
+
+Esta fase no elimina el binario local:
+
+```text
+rust/input-guard/target/release/input-guard
+```
+
+El modo `binary` sigue siendo el recomendado para pruebas rápidas y CI básico. El modo `grpc` queda disponible para validar el patrón sidecar en Docker y Kubernetes.
+
+#### Cliente Go gRPC opcional
+
+El cliente Go para gRPC queda protegido con el build tag `grpcvalidator`. Esto evita que el flujo normal descargue dependencias gRPC o requiera código generado.
+
+Para compilar el cliente gRPC en una validación extendida:
+
+```bash
+make proto-tools
+make proto-go
+go test -tags grpcvalidator ./internal/security
+```
+
+Si Go solicita módulos adicionales, ejecuta:
+
+```bash
+go mod tidy
+```
+
+Solo versiona `go.mod` y `go.sum` si decides hacer obligatorio el modo gRPC en una fase posterior. En esta fase, `gen/go` sigue siendo artefacto generado.

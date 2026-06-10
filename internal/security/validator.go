@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type InputValidator interface {
@@ -13,9 +14,13 @@ type InputValidator interface {
 }
 
 type Options struct {
+	Mode            string
 	ExternalEnabled bool
 	ExternalBinary  string
 	FailOpen        bool
+	GRPCAddr        string
+	GRPCTimeout     time.Duration
+	GRPCFailOpen    bool
 }
 
 type StaticRuleValidator struct {
@@ -41,6 +46,13 @@ type HybridValidator struct {
 
 func NewValidator(opts Options) InputValidator {
 	internal := NewDefaultValidator()
+	mode := strings.ToLower(strings.TrimSpace(opts.Mode))
+
+	if mode == "grpc" {
+		if grpcValidator := buildGRPCValidator(opts); grpcValidator != nil {
+			return NewHybridValidator(internal, grpcValidator, opts.GRPCFailOpen)
+		}
+	}
 
 	if !opts.ExternalEnabled || strings.TrimSpace(opts.ExternalBinary) == "" {
 		return internal

@@ -43,3 +43,8 @@ __pycache__/
 # Artefactos OPA generados
 policies/bundle/
 policies/bundle/*.tar.gz
+# Artefactos Rust gRPC generados
+rust/input-guard-grpc/target/
+
+# Código generado desde proto
+gen/go/

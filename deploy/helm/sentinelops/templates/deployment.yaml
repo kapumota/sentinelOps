@@ -109,6 +109,32 @@ spec:
           resources:
             {{- toYaml .Values.opaSidecar.resources | nindent 12 }}
         {{- end }}
+        {{- if .Values.inputGuardSidecar.enabled }}
+        - name: input-guard-grpc
+          image: "{{ .Values.inputGuardSidecar.image.repository }}:{{ .Values.inputGuardSidecar.image.tag }}"
+          imagePullPolicy: {{ .Values.inputGuardSidecar.image.pullPolicy }}
+          env:
+            - name: INPUT_GUARD_GRPC_ADDR
+              value: "0.0.0.0:50051"
+            - name: RUST_LOG
+              value: "info,input_guard_grpc=debug"
+          ports:
+            - name: validator-grpc
+              containerPort: {{ .Values.inputGuardSidecar.port }}
+              protocol: TCP
+          livenessProbe:
+            grpc:
+              port: {{ .Values.inputGuardSidecar.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            grpc:
+              port: {{ .Values.inputGuardSidecar.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.inputGuardSidecar.resources | nindent 12 }}
+        {{- end }}
       volumes:
         - name: app-data
           emptyDir: {}

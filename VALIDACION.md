@@ -1442,3 +1442,88 @@ Los health checks responden sin autenticación.
 La especificación OpenAPI es JSON válido.
 Los endpoints legados siguen disponibles.
 ```
+
+### Fase 6 - Validación del validador Rust gRPC
+
+#### Validación básica
+
+El flujo normal debe seguir pasando sin levantar gRPC:
+
+```bash
+make check-secrets
+make fmt
+make vet
+make test
+make rust-test
+```
+
+#### Validación del proto
+
+```bash
+make proto-go
+make proto-clean
+```
+
+`make proto-go` requiere `protoc`, `protoc-gen-go` y `protoc-gen-go-grpc`. Si no están instalados:
+
+```bash
+make proto-tools
+```
+
+#### Validación del servidor Rust gRPC
+
+```bash
+make validator-grpc-build
+make validator-grpc-test
+```
+
+#### Validación con Docker Compose
+
+```bash
+source .env.local
+make validator-grpc-up
+```
+
+En otra terminal:
+
+```bash
+source .env.local
+curl -k https://localhost:9446/healthz/live
+curl -k https://localhost:9446/api/v1/docs/swagger.json
+API_URL=https://localhost:9446 make validator-grpc-smoke
+```
+
+Luego:
+
+```bash
+make validator-grpc-down
+```
+
+#### Limpieza
+
+```bash
+make proto-clean
+make opa-clean
+rm -f coverage.out coverage.html
+```
+
+No se deben versionar:
+
+```text
+gen/go
+rust/input-guard-grpc/target
+policies/bundle
+```
+
+#### Validación extendida del cliente Go gRPC
+
+El cliente Go gRPC es opt-in y usa el build tag `grpcvalidator`.
+
+```bash
+make proto-tools
+make proto-go
+go test -tags grpcvalidator ./internal/security
+make proto-clean
+```
+
+Si esta validación modifica `go.mod` o `go.sum`, revisa el diff antes de versionarlo. Para esta fase, el flujo obligatorio sigue usando `VALIDATOR_MODE=binary`.

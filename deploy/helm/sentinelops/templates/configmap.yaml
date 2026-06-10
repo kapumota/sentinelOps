@@ -27,6 +27,10 @@ data:
   EXTERNAL_VALIDATOR_ENABLED: {{ .Values.config.externalValidatorEnabled | quote }}
   EXTERNAL_VALIDATOR_BINARY: {{ .Values.config.externalValidatorBinary | quote }}
   EXTERNAL_VALIDATOR_FAIL_OPEN: {{ .Values.config.externalValidatorFailOpen | quote }}
+  VALIDATOR_MODE: {{ ternary "grpc" .Values.config.validatorMode .Values.inputGuardSidecar.enabled | quote }}
+  VALIDATOR_GRPC_ADDR: {{ ternary "localhost:50051" .Values.config.validatorGrpcAddr .Values.inputGuardSidecar.enabled | quote }}
+  VALIDATOR_GRPC_TIMEOUT: {{ .Values.config.validatorGrpcTimeout | quote }}
+  VALIDATOR_GRPC_FAIL_OPEN: {{ .Values.config.validatorGrpcFailOpen | quote }}
   OPA_POLICY_ENABLED: {{ .Values.config.opaPolicyEnabled | quote }}
   OPA_POLICY_MODE: {{ ternary "http" .Values.config.opaPolicyMode .Values.opaSidecar.enabled | quote }}
   OPA_POLICY_URL: {{ ternary "http://localhost:8181" .Values.config.opaPolicyUrl .Values.opaSidecar.enabled | quote }}

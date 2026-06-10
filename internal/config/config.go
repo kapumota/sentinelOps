@@ -64,6 +64,10 @@ type Config struct {
 	ExternalValidatorOn      bool
 	ExternalValidatorBin     string
 	ExternalValidatorOpen    bool
+	ValidatorMode            string
+	ValidatorGRPCAddr        string
+	ValidatorGRPCTimeout     time.Duration
+	ValidatorGRPCFailOpen    bool
 	PolicyEnabled            bool
 	PolicyMode               string
 	PolicyBinary             string
@@ -142,6 +146,10 @@ func Load() Config {
 		ExternalValidatorOn:      getBool("EXTERNAL_VALIDATOR_ENABLED", true),
 		ExternalValidatorBin:     getEnv("EXTERNAL_VALIDATOR_BINARY", "rust/input-guard/target/release/input-guard"),
 		ExternalValidatorOpen:    getBool("EXTERNAL_VALIDATOR_FAIL_OPEN", false),
+		ValidatorMode:            getEnv("VALIDATOR_MODE", "binary"),
+		ValidatorGRPCAddr:        getEnv("VALIDATOR_GRPC_ADDR", "localhost:50051"),
+		ValidatorGRPCTimeout:     getDuration("VALIDATOR_GRPC_TIMEOUT", 2*time.Second),
+		ValidatorGRPCFailOpen:    getBool("VALIDATOR_GRPC_FAIL_OPEN", false),
 		PolicyEnabled:            getBool("OPA_POLICY_ENABLED", true),
 		PolicyMode:               getEnv("OPA_POLICY_MODE", "exec"),
 		PolicyBinary:             getEnv("OPA_BINARY", "opa"),
