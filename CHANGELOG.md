@@ -1,3 +1,26 @@
+### v1.0.0: documentación final, badges, release notes y limpieza
+
+#### Agregado
+
+- Se agrega bloque amplio de badges verificables en `README.md`.
+- Se agrega `SECURITY.md` con política de reporte y alcance de seguridad.
+- Se agrega `CONTRIBUTING.md` con flujo de ramas, commits y PR.
+- Se agrega `docs/release/v1.0.0.md` con notas de release final.
+- Se agrega `docs/release/linea-de-versiones.md` para documentar la transición desde versiones internas previas.
+- Se agrega `docs/release/checklist-v1.0.0.md` para validar el release antes del tag.
+- Se agregan scripts `scripts/release-clean.sh` y `scripts/release-verify.sh`.
+
+#### Cambiado
+
+- Se actualiza `VERSION` a `1.0.0`.
+- Se agrega `LICENSE` como nombre canónico de licencia, manteniendo `LICENCE` por compatibilidad histórica.
+- Se actualiza la documentación para reflejar fases 1 a 10 como alcance consolidado de v1.0.0.
+
+#### Mantenido
+
+- Chaos engineering queda fuera de v1.0.0 y se reserva para una versión posterior.
+- Las versiones internas previas, incluyendo `2.4.1` y variantes asociadas a `commit1-SentinelOps`, se conservan como historial técnico.
+
 ### Fase 8: observabilidad operacional y evidencia runtime
 
 #### Agregado

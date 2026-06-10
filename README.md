@@ -1,10 +1,66 @@
 ### SentinelOps
 
+#### Estado verificable
+
+[![CI DevSecOps](https://github.com/kapumota/sentinelOps/actions/workflows/ci-devsecops.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/ci-devsecops.yml)
+[![Tests](https://github.com/kapumota/sentinelOps/actions/workflows/tests.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/tests.yml)
+[![Security Scan](https://github.com/kapumota/sentinelOps/actions/workflows/security.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/security.yml)
+[![CodeQL](https://github.com/kapumota/sentinelOps/actions/workflows/codeql.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/codeql.yml)
+[![Release](https://github.com/kapumota/sentinelOps/actions/workflows/release.yml/badge.svg)](https://github.com/kapumota/sentinelOps/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/kapumota/sentinelOps?include_prereleases&sort=semver)](https://github.com/kapumota/sentinelOps/releases)
+[![GitHub tag](https://img.shields.io/github/v/tag/kapumota/sentinelOps?sort=semver)](https://github.com/kapumota/sentinelOps/tags)
+[![Last commit](https://img.shields.io/github/last-commit/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps/commits/main)
+[![Repo size](https://img.shields.io/github/repo-size/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps)
+[![Languages](https://img.shields.io/github/languages/count/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps)
+[![Top language](https://img.shields.io/github/languages/top/kapumota/sentinelOps)](https://github.com/kapumota/sentinelOps)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.25.x-blue)](go.mod)
+[![Rust](https://img.shields.io/badge/Rust-stable-orange)](rust/input-guard/Cargo.toml)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue)](Dockerfile)
+[![Docker Compose](https://img.shields.io/badge/Docker%20Compose-ready-blue)](docker-compose.demo.yml)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Helm-blue)](deploy/helm/sentinelops)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-green)](docs/openapi.json)
+[![OPA](https://img.shields.io/badge/OPA-Rego-purple)](policies/kubernetes)
+[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-blueviolet)](internal/telemetry)
+[![Prometheus](https://img.shields.io/badge/Prometheus-metrics-orange)](deploy/observability/prometheus.yml)
+[![Grafana](https://img.shields.io/badge/Grafana-dashboard-orange)](deploy/observability/grafana/dashboards/sentinelops-runtime.json)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-storage-blue)](docker-compose.storage.yml)
+[![Redis](https://img.shields.io/badge/Redis-cache-red)](docker-compose.storage.yml)
+[![gRPC](https://img.shields.io/badge/gRPC-validator-blue)](proto/validator/v1/validator.proto)
+
+#### Versión v1.0.0
+
+`v1.0.0` consolida SentinelOps como un laboratorio reproducible de DevSecOps con transporte TCP y SSH, secretos dinámicos, pruebas de integración, OpenTelemetry, OPA, OpenAPI, validador Rust gRPC, CI/CD, observabilidad, persistencia PostgreSQL y Redis, hardening de alertas y benchmarks de rendimiento.
+
+#### Nota de versionado
+
+El repositorio conserva historial previo con versiones internas como `2.4.1` y variantes iniciales asociadas a `commit1-SentinelOps`. La versión `v1.0.0` no borra ese historial: lo consolida como una línea estable por fases, lista para release académico y técnico.
+
 **SentinelOps es software real de laboratorio** diseñado para enseñanza, evaluación técnica y experimentación controlada en DevSecOps.
 
 El proyecto muestra cómo un servicio remoto simple puede evolucionar hacia una solución de laboratorio con transporte seguro, autenticación, auditoría, métricas, API administrativa, validación externa, policy as code y despliegue reproducible. 
 
 SentinelOps no pretende reemplazar OpenSSH ni ofrecer acceso remoto general para producción.
+
+### Estado de fases consolidadas en v1.0.0
+
+| Fase | Alcance | Estado |
+|---|---|---|
+| Fase 1 | Secretos dinámicos y limpieza de credenciales | Consolidado |
+| Fase 2 | Tests de integración con testcontainers | Consolidado |
+| Fase 3 | OpenTelemetry y tracing distribuido | Consolidado |
+| Fase 4 | OPA sidecar runtime | Consolidado |
+| Fase 5 | OpenAPI y API versionada | Consolidado |
+| Fase 6 | Validador Rust gRPC | Consolidado |
+| Fase 7 | CI/CD DevSecOps | Consolidado |
+| Fase 8 | Observabilidad operacional | Consolidado |
+| Fase 9 | Persistencia PostgreSQL y Redis | Consolidado |
+| Fase 9.1 | Hardening de alertas de seguridad | Consolidado |
+| Fase 10 | Benchmarks de rendimiento | Consolidado |
+
+#### Alcance fuera de v1.0.0
+
+Chaos engineering queda reservado para una versión posterior. Esta decisión evita introducir variabilidad operacional justo antes del release estable.
 
 ### Estado actual del proyecto
 
@@ -45,6 +101,16 @@ El proyecto fue validado en los siguientes escenarios:
 | Auditoría Python | Validado |
 | Validador Rust | Validado |
 | OPA y Rego | Validado |
+
+### Documentación de release
+
+| Documento | Uso |
+|---|---|
+| `docs/release/v1.0.0.md` | Notas de release final |
+| `docs/release/linea-de-versiones.md` | Relación entre historial previo y v1.0.0 |
+| `docs/release/checklist-v1.0.0.md` | Lista de verificación antes de tag |
+| `SECURITY.md` | Política de seguridad |
+| `CONTRIBUTING.md` | Flujo de contribución por ramas y PR |
 
 ### Credenciales de laboratorio
 
