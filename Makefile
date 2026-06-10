@@ -625,3 +625,11 @@ benchmarks-summary:
 
 benchmarks-clean:
 	rm -rf reports/benchmarks
+
+.PHONY: release-clean release-verify
+
+release-clean:
+	bash scripts/release-clean.sh
+
+release-verify:
+	bash scripts/release-verify.sh

@@ -1885,3 +1885,73 @@ Comandos:
     git diff --check
 
 No se deben versionar reportes generados ni el patch de fase 10.
+### Release v1.0.0: validación final de documentación, badges y limpieza
+
+#### Objetivo
+
+Validar que SentinelOps queda listo para el release final v1.0.0 con documentación actualizada, badges verificables, release notes, política de seguridad y limpieza de artefactos locales.
+
+#### Archivos principales
+
+    README.md
+    CHANGELOG.md
+    VALIDACION.md
+    VERSION
+    LICENSE
+    SECURITY.md
+    CONTRIBUTING.md
+    docs/release/v1.0.0.md
+    docs/release/linea-de-versiones.md
+    docs/release/checklist-v1.0.0.md
+    scripts/release-clean.sh
+    scripts/release-verify.sh
+
+#### Validación estática
+
+Comandos:
+
+    bash -n scripts/release-clean.sh
+    bash -n scripts/release-verify.sh
+    git diff --check
+
+#### Validación completa
+
+Comando:
+
+    make release-verify
+
+Este comando ejecuta la validación base del proyecto, incluyendo secretos, vet, tests Go, tests de storage, tests de integración, Rust y validador gRPC.
+
+#### Limpieza de release
+
+Comando:
+
+    make release-clean
+
+Este comando elimina artefactos locales como reportes, coverage, bundles generados y patches temporales.
+
+#### Validación de versión
+
+Comandos:
+
+    cat VERSION
+    git log --oneline --decorate -n 10
+    git tag --list | sort -V | tail -n 20
+
+La versión final esperada es:
+
+    1.0.0
+
+#### Nota sobre historial previo
+
+El historial con versiones internas previas y referencias como commit1-SentinelOps se conserva como parte del desarrollo técnico. La versión v1.0.0 consolida el estado final por fases con seguridad, observabilidad, persistencia, API versionada, benchmarks y documentación final.
+
+#### Verificación antes del commit
+
+Comandos:
+
+    git status --short
+    git status --short --ignored | grep -E "target/|gen/go|coverage|policies/bundle|reports/benchmarks|reports/runtime|reports/chaos|\.patch" || true
+    git diff --check
+
+No se deben versionar reportes generados, coverage, bundles temporales ni patches usados para aplicar la fase.
