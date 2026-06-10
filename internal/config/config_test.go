@@ -176,3 +176,25 @@ func TestLoadPolicySidecarOverrides(t *testing.T) {
 		t.Fatalf("unexpected OPA policy cache TTL: %s", cfg.PolicyCacheTTL)
 	}
 }
+
+func TestLoadValidatorGRPCOverrides(t *testing.T) {
+	isolateEnvFile(t)
+	t.Setenv("VALIDATOR_MODE", "grpc")
+	t.Setenv("VALIDATOR_GRPC_ADDR", "input-guard:50051")
+	t.Setenv("VALIDATOR_GRPC_TIMEOUT", "3s")
+	t.Setenv("VALIDATOR_GRPC_FAIL_OPEN", "true")
+
+	cfg := Load()
+	if cfg.ValidatorMode != "grpc" {
+		t.Fatalf("expected grpc validator mode, got %s", cfg.ValidatorMode)
+	}
+	if cfg.ValidatorGRPCAddr != "input-guard:50051" {
+		t.Fatalf("unexpected grpc addr: %s", cfg.ValidatorGRPCAddr)
+	}
+	if cfg.ValidatorGRPCTimeout != 3*time.Second {
+		t.Fatalf("unexpected grpc timeout: %s", cfg.ValidatorGRPCTimeout)
+	}
+	if !cfg.ValidatorGRPCFailOpen {
+		t.Fatal("expected grpc fail-open override to be honored")
+	}
+}

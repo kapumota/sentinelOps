@@ -103,3 +103,19 @@
 
 - La telemetría queda deshabilitada por defecto con `OTEL_TRACES_ENABLED=false`.
 - El flujo normal de `make test` no requiere Jaeger ni collector externo.
+
+### Fase 6 - Validador Rust gRPC
+
+#### Agregado
+
+- Se agrega contrato `proto/validator/v1/validator.proto` para el servicio `validator.v1.Validator`.
+- Se agrega crate `rust/input-guard-grpc` con servidor gRPC basado en `tonic`.
+- Se agrega `docker-compose.grpc.yml` para ejecutar SentinelOps con `input-guard-grpc` como servicio lateral.
+- Se agregan variables `VALIDATOR_MODE`, `VALIDATOR_GRPC_ADDR`, `VALIDATOR_GRPC_TIMEOUT` y `VALIDATOR_GRPC_FAIL_OPEN`.
+- Se agregan targets `proto-go`, `proto-clean`, `validator-grpc-build`, `validator-grpc-test`, `validator-grpc-up`, `validator-grpc-down` y `validator-grpc-smoke`.
+- Se agrega soporte Helm opcional para desplegar `input-guard-grpc` como sidecar.
+
+#### Compatibilidad
+
+- El modo por defecto sigue siendo `binary` para no romper el flujo existente.
+- El validador por binario local se mantiene como fallback operativo.

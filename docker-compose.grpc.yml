@@ -1,0 +1,66 @@
+services:
+  input-guard-grpc:
+    build:
+      context: .
+      dockerfile: rust/input-guard-grpc/Dockerfile
+    container_name: sentinelops-input-guard-grpc
+    environment:
+      INPUT_GUARD_GRPC_ADDR: 0.0.0.0:50051
+      RUST_LOG: info,input_guard_grpc=debug
+    ports:
+      - "${VALIDATOR_GRPC_PORT:-50051}:50051"
+    networks:
+      - sentinelops-grpc
+
+  sentinelops:
+    build: .
+    container_name: sentinelops-grpc-demo
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      APP_ENV: development
+      APP_PROFILE: hardened
+      APP_TRANSPORT: ssh
+      APP_PROJECT_ROOT: /app
+      APP_SSH_ADDR: :2222
+      APP_SSH_HOST_KEY_PATH: /app/data/ssh/host_ed25519_key
+      APP_SSH_AUTHORIZED_KEYS_DIR: /app/data/ssh/authorized_keys
+      METRICS_ADDR: :9001
+      APP_CONTROL_API_ENABLED: "true"
+      APP_CONTROL_API_ADDR: :9443
+      APP_CONTROL_API_CERT_PATH: /app/data/controlplane/tls.crt
+      APP_CONTROL_API_KEY_PATH: /app/data/controlplane/tls.key
+      APP_CONTROL_API_USER: ${APP_CONTROL_API_USER:-admin}
+      APP_CONTROL_API_PASSWORD: ${APP_CONTROL_API_PASSWORD:?APP_CONTROL_API_PASSWORD requerido}
+      EXTERNAL_AUDIT_ENABLED: "true"
+      EXTERNAL_AUDIT_COMMAND: python3
+      EXTERNAL_AUDIT_SCRIPT: /app/tools/audit/audit.py
+      EXTERNAL_VALIDATOR_ENABLED: "true"
+      EXTERNAL_VALIDATOR_BINARY: /app/bin/input-guard
+      EXTERNAL_VALIDATOR_FAIL_OPEN: "false"
+      VALIDATOR_MODE: grpc
+      VALIDATOR_GRPC_ADDR: input-guard-grpc:50051
+      VALIDATOR_GRPC_TIMEOUT: 2s
+      VALIDATOR_GRPC_FAIL_OPEN: "false"
+      OPA_POLICY_ENABLED: "true"
+      OPA_POLICY_MODE: exec
+      OPA_BINARY: /app/bin/opa
+      OPA_POLICY_DIR: /app/policies/kubernetes
+      APP_STATE_PERSISTENCE_ENABLED: "true"
+      APP_STATE_PERSISTENCE_DIR: /app/data/state
+      APP_STATE_SESSIONS_PATH: /app/data/state/sessions.json
+      APP_STATE_TUNNELS_PATH: /app/data/state/tunnels.json
+    ports:
+      - "${SSH_PORT:-2225}:2222"
+      - "${METRICS_PORT:-9103}:9001"
+      - "${API_PORT:-9446}:9443"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    depends_on:
+      - input-guard-grpc
+    networks:
+      - sentinelops-grpc
+
+networks:
+  sentinelops-grpc:
+    driver: bridge

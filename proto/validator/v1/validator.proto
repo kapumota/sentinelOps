@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package validator.v1;
+
+option go_package = "sentinelops/gen/go/validator/v1;validatorv1";
+
+// Validator expone el validador Rust como servicio gRPC.
+service Validator {
+  // ValidateInput valida una entrada contra reglas de seguridad.
+  rpc ValidateInput(ValidateInputRequest) returns (ValidateInputResponse);
+
+  // Health informa el estado del servicio.
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+// ValidateInputRequest contiene el input y su contexto.
+message ValidateInputRequest {
+  string correlation_id = 1;
+  string input = 2;
+  ValidationContext context = 3;
+  repeated string rule_ids = 4;
+}
+
+// ValidationContext describe el origen de la validación.
+message ValidationContext {
+  string input_type = 1;
+  string username = 2;
+  string role = 3;
+  string source_ip = 4;
+  int64 timestamp = 5;
+}
+
+// ValidateInputResponse contiene el resultado global y por regla.
+message ValidateInputResponse {
+  bool valid = 1;
+  string reason = 2;
+  repeated RuleResult rule_results = 3;
+  ExecutionMetadata metadata = 4;
+}
+
+// RuleResult representa el resultado de una regla individual.
+message RuleResult {
+  string rule_id = 1;
+  string rule_name = 2;
+  bool passed = 3;
+  string severity = 4;
+  string message = 5;
+  int64 evaluation_time_us = 6;
+}
+
+// ExecutionMetadata contiene metadata de ejecución.
+message ExecutionMetadata {
+  int64 total_time_us = 1;
+  int32 rules_evaluated = 2;
+  string validator_version = 3;
+  string trace_id = 4;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  enum Status {
+    UNKNOWN = 0;
+    HEALTHY = 1;
+    DEGRADED = 2;
+    UNHEALTHY = 3;
+  }
+  Status status = 1;
+  string version = 2;
+  int64 uptime_seconds = 3;
+}

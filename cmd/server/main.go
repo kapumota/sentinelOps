@@ -105,9 +105,13 @@ func run() error {
 	})
 
 	validator := security.NewValidator(security.Options{
+		Mode:            cfg.ValidatorMode,
 		ExternalEnabled: cfg.ExternalValidatorOn,
 		ExternalBinary:  cfg.ExternalValidatorBin,
 		FailOpen:        cfg.ExternalValidatorOpen,
+		GRPCAddr:        cfg.ValidatorGRPCAddr,
+		GRPCTimeout:     cfg.ValidatorGRPCTimeout,
+		GRPCFailOpen:    cfg.ValidatorGRPCFailOpen,
 	})
 	authenticator := auth.NewDefaultService()
 	auditService := audit.NewService(audit.NewExternalRunner(cfg))

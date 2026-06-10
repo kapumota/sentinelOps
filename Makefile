@@ -483,3 +483,42 @@ api-smoke:
 	curl -ksf "$$API_URL/api/v1/docs/swagger.json" >/dev/null; \
 	curl -ksf -u "$$API_USER:$$API_PASSWORD" "$$API_URL/api/v1/admin/status" >/dev/null; \
 	echo "API v1 verificada en $$API_URL"
+
+.PHONY: proto-tools proto-go proto-clean validator-grpc-build validator-grpc-test validator-grpc-docker validator-grpc-up validator-grpc-down validator-grpc-logs validator-grpc-smoke
+
+proto-tools:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+proto-go:
+	bash scripts/generate-proto.sh
+
+proto-clean:
+	rm -rf gen/go
+
+validator-grpc-build:
+	cargo build --manifest-path rust/input-guard-grpc/Cargo.toml --release
+
+validator-grpc-test:
+	cargo test --manifest-path rust/input-guard-grpc/Cargo.toml
+
+validator-grpc-docker:
+	docker build -f rust/input-guard-grpc/Dockerfile -t sentinelops/input-guard-grpc:local .
+
+validator-grpc-up:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose -f docker-compose.grpc.yml up --build
+
+validator-grpc-down:
+	docker compose -f docker-compose.grpc.yml down --remove-orphans
+
+validator-grpc-logs:
+	docker compose -f docker-compose.grpc.yml logs --tail=200 -f
+
+validator-grpc-smoke:
+	@API_URL=$${API_URL:-https://localhost:9446}; \
+	API_USER=$${API_USER:-$${APP_CONTROL_API_USER:-admin}}; \
+	API_PASSWORD=$${API_PASSWORD:-$${APP_CONTROL_API_PASSWORD:-}}; \
+	curl -ksf "$$API_URL/healthz/live" >/dev/null; \
+	curl -ksf "$$API_URL/api/v1/docs/swagger.json" >/dev/null; \
+	curl -ksf -u "$$API_USER:$$API_PASSWORD" "$$API_URL/api/v1/admin/status" >/dev/null; \
+	echo "Stack gRPC verificado en $$API_URL"

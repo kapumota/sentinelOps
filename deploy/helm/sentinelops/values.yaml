@@ -39,6 +39,10 @@ config:
   externalValidatorEnabled: "true"
   externalValidatorBinary: "/app/bin/input-guard"
   externalValidatorFailOpen: "false"
+  validatorMode: "binary"
+  validatorGrpcAddr: "localhost:50051"
+  validatorGrpcTimeout: "2s"
+  validatorGrpcFailOpen: "false"
   opaPolicyEnabled: "true"
   opaPolicyMode: "exec"
   opaPolicyUrl: "http://localhost:8181"
@@ -135,4 +139,19 @@ opaSidecar:
       memory: 64Mi
     limits:
       cpu: 100m
+      memory: 128Mi
+
+inputGuardSidecar:
+  enabled: false
+  image:
+    repository: sentinelops/input-guard-grpc
+    tag: "local"
+    pullPolicy: IfNotPresent
+  port: 50051
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
       memory: 128Mi
