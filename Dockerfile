@@ -5,7 +5,7 @@ WORKDIR /build/rust/input-guard
 COPY rust/input-guard /build/rust/input-guard
 RUN cargo build --release && chmod +x target/release/input-guard
 
-FROM golang:1.25-alpine AS go-builder
+FROM golang:1.26-alpine AS go-builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
