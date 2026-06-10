@@ -42,6 +42,7 @@ fi
 log_info "Generando credenciales locales para SentinelOps"
 
 ADMIN_API_PASS="$(generate_password)"
+GRAFANA_ADMIN_PASS="$(generate_password)"
 STUDENT_PASS="$(generate_lab_password)"
 TEACHER_PASS="$(generate_lab_password)"
 AUDITOR_PASS="$(generate_lab_password)"
@@ -65,6 +66,9 @@ OTEL_EXPORTER_TYPE=stdout
 OTEL_EXPORTER_ENDPOINT=localhost:4317
 OTEL_EXPORTER_INSECURE=true
 OTEL_SAMPLE_RATE=1.0
+
+GF_SECURITY_ADMIN_USER=admin
+GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASS}
 
 APP_CONTROL_API_ENABLED=true
 APP_CONTROL_API_ADDR=:9443
@@ -123,6 +127,7 @@ log_info "Credenciales generadas en .env.local"
 printf '\nCredenciales de laboratorio\n'
 printf -- '------------------------------------------------------------\n'
 printf 'API de control: admin / %s\n' "${ADMIN_API_PASS}"
+printf 'Grafana: admin / %s\n' "${GRAFANA_ADMIN_PASS}"
 printf 'student: %s\n' "${STUDENT_PASS}"
 printf 'teacher: %s\n' "${TEACHER_PASS}"
 printf 'auditor: %s\n' "${AUDITOR_PASS}"

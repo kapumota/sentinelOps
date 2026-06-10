@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: SentinelOps
+    orgId: 1
+    folder: SentinelOps
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

@@ -552,3 +552,23 @@ release-tag:
 	git tag -a "v$$version" -m "release v$$version"; \
 	git push origin "v$$version"; \
 	echo "Tag v$$version creado"
+
+.PHONY: observability-up observability-down observability-logs observability-smoke runtime-evidence observability-clean
+
+observability-up:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose -f docker-compose.observability.yml up --build
+
+observability-down:
+	docker compose -f docker-compose.observability.yml down --remove-orphans
+
+observability-logs:
+	docker compose -f docker-compose.observability.yml logs --tail=200 -f
+
+observability-smoke:
+	bash scripts/observability-smoke.sh
+
+runtime-evidence:
+	bash scripts/runtime-evidence.sh
+
+observability-clean:
+	rm -rf reports/runtime
