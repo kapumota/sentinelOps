@@ -1841,3 +1841,48 @@ Después de mergear la fase 7 en `main`, se puede crear el tag:
 git tag -a v0.7.0-fase7-ci-cd-devsecops -m "fase 7: CI/CD DevSecOps"
 git push origin v0.7.0-fase7-ci-cd-devsecops
 ```
+
+### Fase 8: observabilidad operacional y evidencia runtime
+
+#### Objetivo
+
+La fase 8 consolida la operación observable de SentinelOps. Agrega dashboards, configuración reproducible de Prometheus y Grafana, scripts de smoke operacional, evidencia de runtime y runbooks.
+
+#### Componentes agregados
+
+| Componente | Archivo |
+|---|---|
+| Prometheus runtime | `deploy/observability/prometheus.yml` |
+| Grafana provisioning | `deploy/observability/grafana/provisioning/` |
+| Dashboard runtime | `deploy/observability/grafana/dashboards/sentinelops-runtime.json` |
+| Smoke de observabilidad | `scripts/observability-smoke.sh` |
+| Evidencia runtime | `scripts/runtime-evidence.sh` |
+| Runbook | `docs/runbooks/observabilidad-runtime.md` |
+| Guía de evidencia | `docs/evidence/runtime-evidence.md` |
+
+#### Comandos
+
+```bash
+make observability-up
+make observability-smoke
+make runtime-evidence
+make observability-down
+```
+
+#### Endpoints locales
+
+| Servicio | URL |
+|---|---|
+| SentinelOps metrics | `http://localhost:9101/metrics` |
+| SentinelOps Control Plane | `https://localhost:9444` |
+| Prometheus | `http://localhost:9090` |
+| Grafana | `http://localhost:3000` |
+| Jaeger | `http://localhost:16686` |
+
+#### Evidencia generada
+
+```text
+reports/runtime/<timestamp>/
+```
+
+El reporte incluye métricas, health checks, estado autenticado si hay contraseña configurada, targets de Prometheus, estado de Grafana, servicios de Jaeger y estado de contenedores.

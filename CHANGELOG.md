@@ -1,3 +1,14 @@
+### Fase 8: observabilidad operacional y evidencia runtime
+
+#### Agregado
+
+- Se agrega configuración operacional de Prometheus para runtime local.
+- Se agrega Grafana con provisioning y dashboard `SentinelOps runtime`.
+- Se agrega script `scripts/observability-smoke.sh`.
+- Se agrega script `scripts/runtime-evidence.sh`.
+- Se agregan runbooks y documentación de evidencia runtime.
+- Se agregan targets `observability-up`, `observability-down`, `observability-logs`, `observability-smoke`, `runtime-evidence` y `observability-clean`.
+
 ### Changelog
 
 ### Fase 7: CI/CD DevSecOps

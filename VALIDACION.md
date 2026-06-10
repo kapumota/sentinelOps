@@ -1586,3 +1586,89 @@ Es aceptable ver rutas con `!!` si son artefactos ignorados, por ejemplo:
 ```
 
 No deben aparecer en `git status --short` normal.
+### Fase 8: validación de observabilidad runtime
+
+#### Objetivo
+
+Validar que SentinelOps expone evidencia operacional reproducible mediante métricas, health checks, trazas, dashboard Grafana y reportes locales de runtime.
+
+#### Validación estática
+
+Comandos:
+
+    bash -n scripts/observability-smoke.sh
+    bash -n scripts/runtime-evidence.sh
+    bash -n scripts/generate-secrets.sh
+    python3 -m json.tool deploy/observability/grafana/dashboards/sentinelops-runtime.json >/dev/null
+    git diff --check
+
+#### Validación base del proyecto
+
+Comandos:
+
+    make generate-secrets
+    make check-secrets
+    make docs-check
+    make vet
+    make test
+    make rust-test
+    make validator-grpc-build
+    make validator-grpc-test
+
+#### Levantar observabilidad
+
+Comando:
+
+    make observability-up
+
+#### Smoke test de observabilidad
+
+En otra terminal:
+
+    source .env.local
+    make observability-smoke
+
+El smoke test revisa:
+
+    Control Plane HTTPS
+    Prometheus
+    Grafana
+    Jaeger
+    endpoint /metrics
+    endpoint /healthz/live
+    endpoint /healthz/ready
+    endpoint /healthz/startup
+
+#### Generar evidencia runtime
+
+Comandos:
+
+    source .env.local
+    make runtime-evidence
+
+La evidencia se genera en:
+
+    reports/runtime/<timestamp>/
+
+#### Apagar stack observable
+
+Comando:
+
+    make observability-down
+
+#### Limpieza local
+
+Comandos:
+
+    make observability-clean
+    rm -f coverage.out coverage.html
+
+#### Verificación antes del commit
+
+Comandos:
+
+    git status --short
+    git status --short --ignored | grep -E "target/|gen/go|coverage|policies/bundle|reports/runtime|\.patch" || true
+    git diff --check
+
+Es aceptable ver rutas ignoradas con `!!` si corresponden a artefactos generados. No deben aparecer en `git status --short` normal.
