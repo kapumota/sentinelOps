@@ -522,3 +522,33 @@ validator-grpc-smoke:
 	curl -ksf "$$API_URL/api/v1/docs/swagger.json" >/dev/null; \
 	curl -ksf -u "$$API_USER:$$API_PASSWORD" "$$API_URL/api/v1/admin/status" >/dev/null; \
 	echo "Stack gRPC verificado en $$API_URL"
+
+.PHONY: ci-check ci-openapi ci-proto ci-security ci-clean release-tag
+
+ci-check:
+	bash scripts/ci-check.sh
+
+ci-openapi:
+	$(MAKE) docs
+	$(MAKE) docs-check
+
+ci-proto:
+	$(MAKE) proto-go
+	$(MAKE) proto-clean
+
+ci-security:
+	$(MAKE) check-secrets
+	@if command -v gosec >/dev/null 2>&1; then gosec ./...; else echo "gosec no está instalado"; fi
+	@if command -v trivy >/dev/null 2>&1; then trivy fs --exit-code 0 .; else echo "trivy no está instalado"; fi
+
+ci-clean:
+	$(MAKE) proto-clean
+	$(MAKE) opa-clean
+	rm -f coverage.out coverage.html gosec.sarif trivy-fs.sarif
+	rm -rf reports/release
+
+release-tag:
+	@read -r -p "Versión, ejemplo 0.7.0: " version; \
+	git tag -a "v$$version" -m "release v$$version"; \
+	git push origin "v$$version"; \
+	echo "Tag v$$version creado"

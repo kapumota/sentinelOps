@@ -1794,3 +1794,50 @@ go mod tidy
 ```
 
 Solo versiona `go.mod` y `go.sum` si decides hacer obligatorio el modo gRPC en una fase posterior. En esta fase, `gen/go` sigue siendo artefacto generado.
+
+### Fase 7: CI/CD DevSecOps
+
+#### Objetivo
+
+La fase 7 consolida la validación automática del proyecto. La pipeline cubre calidad Go, calidad Rust, contrato OpenAPI, contrato gRPC, políticas OPA, Helm, seguridad básica y construcción de imágenes Docker.
+
+#### Workflows agregados
+
+| Workflow     | Archivo                              | Uso                                      |
+| ------------ | ------------------------------------ | ---------------------------------------- |
+| CI DevSecOps | `.github/workflows/ci-devsecops.yml` | Validación principal de PR y `main`      |
+| CodeQL       | `.github/workflows/codeql.yml`       | Análisis estático para Go                |
+| Release      | `.github/workflows/release.yml`      | Creación de releases al publicar tags    |
+| Dependabot   | `.github/dependabot.yml`             | Actualización controlada de dependencias |
+
+#### Comandos locales
+
+```bash
+make ci-check
+make ci-openapi
+make ci-proto
+make ci-security
+make ci-clean
+```
+
+#### Artefactos no versionados
+
+Estos archivos y carpetas se generan localmente, pero no deben subirse al repositorio:
+
+```text
+gen/go/
+policies/bundle/
+rust/input-guard/target/
+rust/input-guard-grpc/target/
+coverage.out
+coverage.html
+```
+
+#### Release de fase 7
+
+Después de mergear la fase 7 en `main`, se puede crear el tag:
+
+```bash
+git tag -a v0.7.0-fase7-ci-cd-devsecops -m "fase 7: CI/CD DevSecOps"
+git push origin v0.7.0-fase7-ci-cd-devsecops
+```

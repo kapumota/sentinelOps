@@ -1,0 +1,281 @@
+name: sentinelops-devsecops
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: "Ejecutar pruebas E2E con Docker"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+env:
+  GO_VERSION: "1.25.x"
+  PYTHON_VERSION: "3.11"
+  RUST_TOOLCHAIN: "stable"
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: sentinelops-devsecops-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-quality:
+    name: Go quality and API contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install Go proto plugins
+        run: make proto-tools
+
+      - name: Download and verify Go modules
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Check go.mod consistency
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Check Go formatting
+        run: |
+          test -z "$(gofmt -l .)" || (echo "Archivos Go sin formato"; gofmt -l .; exit 1)
+
+      - name: Generate and validate OpenAPI
+        run: |
+          make docs
+          make docs-check
+          git diff --exit-code docs internal/controlplane/httpapi/openapi.json
+
+      - name: Generate proto and clean generated code
+        run: |
+          make proto-go
+          make proto-clean
+          git diff --exit-code proto scripts/generate-proto.sh
+
+      - name: Run go vet
+        run: make vet
+
+      - name: Run Go tests
+        run: make test
+
+  rust-quality:
+    name: Rust validators
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Check Rust format
+        run: |
+          cargo fmt --manifest-path rust/input-guard/Cargo.toml -- --check
+          cargo fmt --manifest-path rust/input-guard-grpc/Cargo.toml -- --check
+
+      - name: Run Rust tests
+        run: |
+          make rust-test
+          make validator-grpc-test
+
+      - name: Build Rust gRPC validator
+        run: make validator-grpc-build
+
+  policy-and-helm:
+    name: Policy, OpenAPI and Helm
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: 0.67.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Validate OpenAPI JSON
+        run: make docs-check
+
+      - name: Validate OPA policies
+        run: |
+          make opa-test
+          make opa-build
+          make opa-clean
+
+      - name: Render Helm chart
+        run: make helm-template
+
+      - name: Upload Helm manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-manifests
+          path: reports/helm/*.yaml
+
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check hardcoded secrets
+        run: make check-secrets
+
+      - name: Run Gosec
+        uses: securego/gosec@master
+        with:
+          args: "-fmt sarif -out gosec.sarif -no-fail ./..."
+
+      - name: Upload Gosec SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('gosec.sarif') != ''
+        with:
+          sarif_file: gosec.sarif
+          category: gosec
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          exit-code: "0"
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('trivy-fs.sarif') != ''
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-results
+          path: |
+            gosec.sarif
+            trivy-fs.sarif
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs:
+      - go-quality
+      - rust-quality
+      - policy-and-helm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build SentinelOps image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: sentinelops:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build input-guard gRPC image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: rust/input-guard-grpc/Dockerfile
+          push: false
+          tags: sentinelops/input-guard-grpc:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  e2e-manual:
+    name: E2E manual
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs:
+      - docker-build
+    if: github.event_name == 'workflow_dispatch' && inputs.run_e2e == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run gRPC stack smoke test
+        run: |
+          make generate-secrets
+          make validator-grpc-up &
+          sleep 25
+          API_URL=https://localhost:9446 make validator-grpc-smoke
+          make validator-grpc-down

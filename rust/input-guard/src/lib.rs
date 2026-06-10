@@ -20,9 +20,9 @@ pub fn validate_input(input: &str) -> Result<(), String> {
         }
     }
 
-    let allowed = trimmed.chars().all(|c| {
-        c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.')
-    });
+    let allowed = trimmed
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.'));
 
     if !allowed {
         return Err("input contains unsupported characters".to_string());

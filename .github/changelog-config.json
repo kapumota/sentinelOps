@@ -1,0 +1,15 @@
+{
+  "categories": [
+    {
+      "title": "Cambios",
+      "labels": ["feature", "enhancement", "documentation", "ci", "security", "dependencies"]
+    },
+    {
+      "title": "Correcciones",
+      "labels": ["bug", "fix"]
+    }
+  ],
+  "template": "#{{CHANGELOG}}",
+  "pr_template": "- #{{TITLE}} #{{URL}}",
+  "empty_template": "No hay cambios agrupados por etiquetas."
+}

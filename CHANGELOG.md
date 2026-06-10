@@ -1,5 +1,23 @@
 ### Changelog
 
+### Fase 7: CI/CD DevSecOps
+
+#### Agregado
+
+- Se agrega workflow principal `ci-devsecops.yml`.
+- Se agrega workflow `codeql.yml` para análisis estático Go.
+- Se agrega workflow `release.yml` para releases por tag.
+- Se agrega configuración de Dependabot.
+- Se agrega `scripts/ci-check.sh` para validación local.
+- Se agrega `.yamllint.yml`.
+- Se agregan targets `ci-check`, `ci-openapi`, `ci-proto`, `ci-security`, `ci-clean` y `release-tag`.
+
+#### Cambiado
+
+- Se documenta el flujo de validación local y remota.
+- Se documenta la limpieza de artefactos generados por proto, OPA, coverage y Rust.
+
+
 ### Unreleased - fase 5 OpenAPI y versionado de API
 
 #### Agregado
