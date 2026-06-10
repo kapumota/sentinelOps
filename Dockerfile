@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM rust:1.79-alpine AS rust-builder
+FROM rust:1.96-alpine AS rust-builder
 WORKDIR /build/rust/input-guard
 COPY rust/input-guard /build/rust/input-guard
 RUN cargo build --release && chmod +x target/release/input-guard
