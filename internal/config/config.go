@@ -65,8 +65,13 @@ type Config struct {
 	ExternalValidatorBin     string
 	ExternalValidatorOpen    bool
 	PolicyEnabled            bool
+	PolicyMode               string
 	PolicyBinary             string
 	PolicyDir                string
+	PolicyURL                string
+	PolicyTimeout            time.Duration
+	PolicyCacheEnabled       bool
+	PolicyCacheTTL           time.Duration
 	TelemetryEnabled         bool
 	TelemetryExporter        string
 	TelemetryEndpoint        string
@@ -138,8 +143,13 @@ func Load() Config {
 		ExternalValidatorBin:     getEnv("EXTERNAL_VALIDATOR_BINARY", "rust/input-guard/target/release/input-guard"),
 		ExternalValidatorOpen:    getBool("EXTERNAL_VALIDATOR_FAIL_OPEN", false),
 		PolicyEnabled:            getBool("OPA_POLICY_ENABLED", true),
+		PolicyMode:               getEnv("OPA_POLICY_MODE", "exec"),
 		PolicyBinary:             getEnv("OPA_BINARY", "opa"),
 		PolicyDir:                getEnv("OPA_POLICY_DIR", "policies/kubernetes"),
+		PolicyURL:                getEnv("OPA_POLICY_URL", "http://localhost:8181"),
+		PolicyTimeout:            getDuration("OPA_POLICY_TIMEOUT", 2*time.Second),
+		PolicyCacheEnabled:       getBool("OPA_POLICY_CACHE_ENABLED", true),
+		PolicyCacheTTL:           getDuration("OPA_POLICY_CACHE_TTL", 30*time.Second),
 		TelemetryEnabled:         getBool("OTEL_TRACES_ENABLED", false),
 		TelemetryExporter:        getEnv("OTEL_EXPORTER_TYPE", "stdout"),
 		TelemetryEndpoint:        getEnv("OTEL_EXPORTER_ENDPOINT", "localhost:4317"),

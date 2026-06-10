@@ -1,5 +1,18 @@
 ### Changelog
 
+### Unreleased - fase 4 OPA sidecar runtime
+
+#### Agregado
+- Cliente OPA HTTP con cache TTL para consultar un sidecar en runtime.
+- Configuración `OPA_POLICY_MODE=exec|http` para alternar entre binario local y sidecar HTTP.
+- `docker-compose.opa.yml` para ejecutar SentinelOps con OPA sidecar.
+- Targets `run-opa-sidecar`, `stop-opa-sidecar`, `opa-test`, `opa-build`, `opa-run` y `opa-ci`.
+- Soporte Helm opcional para OPA sidecar en el mismo pod.
+- Pruebas unitarias del cliente OPA HTTP y su cache.
+
+#### Mantenido
+- El modo `exec` sigue siendo el default para no exigir OPA como servicio externo en pruebas unitarias ni ejecución local básica.
+
 ### Unreleased - fase 2 tests de integración
 
 #### Agregado

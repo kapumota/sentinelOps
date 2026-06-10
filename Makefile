@@ -29,6 +29,11 @@ OTEL_EXPORTER_TYPE ?= stdout
 OTEL_EXPORTER_ENDPOINT ?= localhost:4317
 OTEL_EXPORTER_INSECURE ?= true
 OTEL_SAMPLE_RATE ?= 1.0
+OPA_POLICY_MODE ?= exec
+OPA_POLICY_URL ?= http://localhost:8181
+OPA_POLICY_TIMEOUT ?= 2s
+OPA_POLICY_CACHE_ENABLED ?= true
+OPA_POLICY_CACHE_TTL ?= 30s
 LAB_PASSWORD_STUDENT ?=
 LAB_PASSWORD_TEACHER ?=
 LAB_PASSWORD_AUDITOR ?=
@@ -47,7 +52,7 @@ APP_SSH_REMOTE_FORWARD_ENABLED ?= false
 APP_SSH_REMOTE_BIND_ALLOWLIST ?= 127.0.0.1:10080,127.0.0.1:10443
 APP_SSH_REMOTE_ALLOWED_ROLES ?= teacher,auditor,admin
 
-.PHONY: help build build-client run run-tcp run-ssh run-ssh-telemetry run-jaeger stop-jaeger run-with-telemetry ssh-lab-setup demo docker-demo curl-examples test test-unit test-integration test-race test-coverage test-all test-e2e-containers rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-observability-up docker-observability-down docker-observability-logs docker-stop deploy-local cleanup
+.PHONY: help build build-client run run-tcp run-ssh run-ssh-telemetry run-jaeger stop-jaeger run-with-telemetry run-opa-sidecar stop-opa-sidecar opa-build opa clean opa-test opa-run opa-ci ssh-lab-setup demo docker-demo curl-examples test test-unit test-integration test-race test-coverage test-all test-e2e-containers rust-test rust-build fmt vet clean check audit policy helm-lint helm-template helm-install bootstrap setup-dev install-dev-tools generate-secrets check-secrets e2e e2e-full docker-build docker-run docker-run-tcp docker-run-ssh docker-demo-up docker-demo-down docker-demo-logs docker-observability-up docker-observability-down docker-observability-logs docker-stop deploy-local cleanup
 
 help:
 	@echo "Targets disponibles:"
@@ -59,6 +64,8 @@ help:
 	@echo "  make run-ssh-telemetry - Ejecuta SSH con OpenTelemetry local"
 	@echo "  make run-jaeger       - Levanta Jaeger local"
 	@echo "  make run-with-telemetry - Levanta SentinelOps, Jaeger y Prometheus"
+	@echo "  make run-opa-sidecar - Levanta SentinelOps con OPA sidecar HTTP"
+	@echo "  make opa-test         - Ejecuta pruebas Rego"
 	@echo "  make ssh-lab-setup    - Genera llave de laboratorio y authorized_keys"
 	@echo "  make generate-secrets - Genera .env.local con credenciales aleatorias"
 	@echo "  make curl-examples    - Ejecuta ejemplos curl contra la API HTTPS"
@@ -126,6 +133,11 @@ run-tcp: rust-build
 	EXTERNAL_VALIDATOR_BINARY=$(RUST_BINARY) \
 	EXTERNAL_VALIDATOR_FAIL_OPEN=false \
 	OPA_POLICY_ENABLED=true \
+	OPA_POLICY_MODE=$(OPA_POLICY_MODE) \
+	OPA_POLICY_URL=$(OPA_POLICY_URL) \
+	OPA_POLICY_TIMEOUT=$(OPA_POLICY_TIMEOUT) \
+	OPA_POLICY_CACHE_ENABLED=$(OPA_POLICY_CACHE_ENABLED) \
+	OPA_POLICY_CACHE_TTL=$(OPA_POLICY_CACHE_TTL) \
 	OPA_BINARY=opa \
 	OPA_POLICY_DIR=policies/kubernetes \
 	OTEL_TRACES_ENABLED=$(OTEL_TRACES_ENABLED) \
@@ -155,8 +167,18 @@ run-ssh: rust-build
 	EXTERNAL_VALIDATOR_BINARY=$(RUST_BINARY) \
 	EXTERNAL_VALIDATOR_FAIL_OPEN=false \
 	OPA_POLICY_ENABLED=true \
+	OPA_POLICY_MODE=$(OPA_POLICY_MODE) \
+	OPA_POLICY_URL=$(OPA_POLICY_URL) \
+	OPA_POLICY_TIMEOUT=$(OPA_POLICY_TIMEOUT) \
+	OPA_POLICY_CACHE_ENABLED=$(OPA_POLICY_CACHE_ENABLED) \
+	OPA_POLICY_CACHE_TTL=$(OPA_POLICY_CACHE_TTL) \
 	OPA_BINARY=opa \
 	OPA_POLICY_DIR=policies/kubernetes \
+	OTEL_TRACES_ENABLED=$(OTEL_TRACES_ENABLED) \
+	OTEL_EXPORTER_TYPE=$(OTEL_EXPORTER_TYPE) \
+	OTEL_EXPORTER_ENDPOINT=$(OTEL_EXPORTER_ENDPOINT) \
+	OTEL_EXPORTER_INSECURE=$(OTEL_EXPORTER_INSECURE) \
+	OTEL_SAMPLE_RATE=$(OTEL_SAMPLE_RATE) \
 	APP_TRANSPORT=ssh \
 	APP_SSH_ADDR=$(APP_SSH_ADDR) \
 	APP_SSH_LOCAL_FORWARD_ENABLED=true \
@@ -195,6 +217,31 @@ run-ssh-telemetry:
 		OTEL_SAMPLE_RATE=1.0
 
 run-with-telemetry: docker-observability-up
+
+run-opa-sidecar:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose -f docker-compose.opa.yml up --build -d
+	@echo "OPA sidecar: http://localhost:8181"
+	@echo "SentinelOps API: https://localhost:9445/healthz"
+
+stop-opa-sidecar:
+	HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose -f docker-compose.opa.yml down
+
+opa-test:
+	opa test -v policies/kubernetes
+
+opa-build:
+	@mkdir -p policies/bundle
+	opa build -b policies/kubernetes -o policies/bundle/sentinelops.tar.gz
+	@echo "Bundle OPA generado en policies/bundle/sentinelops.tar.gz"
+
+opa-run: opa-build
+	opa run --server --addr=localhost:8181 --log-level=info --bundle=policies/bundle/sentinelops.tar.gz
+
+opa-ci: opa-test opa-build
+	@echo "Políticas OPA validadas"
+
+opa-clean:
+	rm -rf policies/bundle
 
 ssh-lab-setup:
 	USER_NAME=$${USER_NAME:-student}; bash scripts/setup-ssh-lab.sh "$$USER_NAME"
@@ -347,6 +394,11 @@ docker-run-tcp:
 		-e EXTERNAL_VALIDATOR_BINARY=/app/bin/input-guard \
 		-e EXTERNAL_VALIDATOR_FAIL_OPEN=false \
 		-e OPA_POLICY_ENABLED=true \
+		-e OPA_POLICY_MODE=$${OPA_POLICY_MODE:-exec} \
+		-e OPA_POLICY_URL=$${OPA_POLICY_URL:-http://localhost:8181} \
+		-e OPA_POLICY_TIMEOUT=$${OPA_POLICY_TIMEOUT:-2s} \
+		-e OPA_POLICY_CACHE_ENABLED=$${OPA_POLICY_CACHE_ENABLED:-true} \
+		-e OPA_POLICY_CACHE_TTL=$${OPA_POLICY_CACHE_TTL:-30s} \
 		-e OPA_BINARY=/app/bin/opa \
 		-e OPA_POLICY_DIR=/app/policies/kubernetes \
 		--name sentinelops-local \
@@ -391,6 +443,11 @@ docker-run-ssh:
 		-e EXTERNAL_VALIDATOR_BINARY=/app/bin/input-guard \
 		-e EXTERNAL_VALIDATOR_FAIL_OPEN=false \
 		-e OPA_POLICY_ENABLED=true \
+		-e OPA_POLICY_MODE=$${OPA_POLICY_MODE:-exec} \
+		-e OPA_POLICY_URL=$${OPA_POLICY_URL:-http://localhost:8181} \
+		-e OPA_POLICY_TIMEOUT=$${OPA_POLICY_TIMEOUT:-2s} \
+		-e OPA_POLICY_CACHE_ENABLED=$${OPA_POLICY_CACHE_ENABLED:-true} \
+		-e OPA_POLICY_CACHE_TTL=$${OPA_POLICY_CACHE_TTL:-30s} \
 		-e OPA_BINARY=/app/bin/opa \
 		-e OPA_POLICY_DIR=/app/policies/kubernetes \
 		--name sentinelops-local \

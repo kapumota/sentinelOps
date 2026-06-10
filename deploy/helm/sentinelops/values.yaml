@@ -40,6 +40,11 @@ config:
   externalValidatorBinary: "/app/bin/input-guard"
   externalValidatorFailOpen: "false"
   opaPolicyEnabled: "true"
+  opaPolicyMode: "exec"
+  opaPolicyUrl: "http://localhost:8181"
+  opaPolicyTimeout: "2s"
+  opaPolicyCacheEnabled: "true"
+  opaPolicyCacheTtl: "30s"
   opaBinary: "/app/bin/opa"
   opaPolicyDir: "/app/policies/kubernetes"
   controlApiEnabled: "true"
@@ -109,3 +114,15 @@ serviceMonitor:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+opaSidecar:
+  enabled: false
+  image: openpolicyagent/opa:0.67.1-static
+  logLevel: info
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

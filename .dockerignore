@@ -13,3 +13,6 @@ vendor
 !.env.example
 **/.DS_Store
 **/*.log
+
+# Bundles OPA generados
+policies/bundle/
