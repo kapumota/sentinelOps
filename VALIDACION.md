@@ -1815,3 +1815,73 @@ Comandos:
     git diff --check
 
 No se debe versionar el patch de fase 9.1 ni artefactos generados.
+### Fase 10: validación de benchmarks de rendimiento
+
+#### Objetivo
+
+Validar benchmarks reproducibles para comparar throughput de conexiones TCP frente a SSH, latencia de validación Go frente a Rust gRPC y overhead de OPA.
+
+#### Validación estática
+
+Comandos:
+
+    bash -n scripts/run-benchmarks.sh
+    bash -n scripts/benchmark-summary.sh
+    go test ./benchmarks -run '^$'
+    git diff --check
+
+#### Validación base del proyecto
+
+Comandos:
+
+    make check-secrets
+    make vet
+    make test
+    make storage-test
+    TESTCONTAINERS_RYUK_DISABLED=true make test-integration
+    make rust-test
+    make validator-grpc-build
+    make validator-grpc-test
+
+#### Ejecutar benchmarks por bloque
+
+Comandos:
+
+    make benchmark-network
+    make benchmark-validator
+    make benchmark-opa
+
+#### Ejecutar todos los benchmarks
+
+Comando:
+
+    make benchmarks
+
+#### Generar resumen
+
+Comando:
+
+    make benchmarks-summary
+
+#### Salida esperada
+
+Los resultados se guardan en:
+
+    reports/benchmarks/<timestamp>/
+
+#### Limpieza local
+
+Comandos:
+
+    make benchmarks-clean
+    rm -f coverage.out coverage.html
+
+#### Verificación antes del commit
+
+Comandos:
+
+    git status --short
+    git status --short --ignored | grep -E "target/|gen/go|coverage|policies/bundle|reports/benchmarks|reports/runtime|\.patch" || true
+    git diff --check
+
+No se deben versionar reportes generados ni el patch de fase 10.

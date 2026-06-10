@@ -174,3 +174,13 @@
 - Se valida conversión de puertos antes de convertir a `uint32`.
 - Se documentan ejecuciones externas auditadas sin shell.
 - Se evita `context.Background` directo en goroutines de apagado.
+### Fase 10: benchmarks de rendimiento
+
+#### Agregado
+
+- Se agregan benchmarks Go para throughput de conexiones TCP frente a SSH.
+- Se agregan benchmarks de validación Go nativa y Rust gRPC.
+- Se agregan benchmarks de overhead OPA HTTP con y sin cache.
+- Se agregan scripts `scripts/run-benchmarks.sh` y `scripts/benchmark-summary.sh`.
+- Se agregan targets de Makefile para ejecutar y limpiar benchmarks.
+- Se agrega documentación en `docs/benchmarks/` y `docs/runbooks/`.
