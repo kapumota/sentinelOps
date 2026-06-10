@@ -1916,3 +1916,35 @@ La fase 9 agrega una abstracción de almacenamiento para sesiones, túneles, aud
 #### Limpieza
 
     make storage-clean
+
+### Fase 9.1: hardening de alertas de seguridad
+
+#### Objetivo
+
+La fase 9.1 reduce alertas de seguridad detectadas por Code scanning, gosec y Trivy antes de iniciar benchmarks de rendimiento.
+
+#### Alcance
+
+Esta fase cubre validación de rutas, ejecución controlada de subprocesos, conversión segura de puertos, redacción de secretos y documentación de alertas restantes.
+
+#### Validación
+
+```bash
+make check-secrets
+make vet
+make test
+make storage-test
+TESTCONTAINERS_RYUK_DISABLED=true make test-integration
+make rust-test
+make validator-grpc-build
+make validator-grpc-test
+git diff --check
+```
+
+#### Documento técnico
+
+La explicación de alertas, criterios de aceptación y validación se encuentra en:
+
+```text
+docs/security/alertas-code-scanning.md
+```

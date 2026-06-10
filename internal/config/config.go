@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"sentinelops/internal/secrets"
+	"sentinelops/internal/security"
 )
 
 type Config struct {
@@ -195,7 +196,12 @@ func loadEnvFileIfExists(path string) {
 		return
 	}
 
-	file, err := os.Open(path)
+	safePath, err := security.ValidateFilesystemPath(path, "archivo de entorno")
+	if err != nil {
+		return
+	}
+	// #nosec G304 -- safePath fue normalizada antes de abrir el archivo de entorno.
+	file, err := os.Open(safePath)
 	if err != nil {
 		return
 	}

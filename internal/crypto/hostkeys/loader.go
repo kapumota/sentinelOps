@@ -10,26 +10,33 @@ import (
 	"path/filepath"
 
 	"golang.org/x/crypto/ssh"
+
+	"sentinelops/internal/security"
 )
 
 func LoadOrCreateSigner(path string) (ssh.Signer, error) {
 	if path == "" {
 		return nil, fmt.Errorf("ssh host key path is empty")
 	}
+	safePath, err := security.ValidateFilesystemPath(path, "ssh host key")
+	if err != nil {
+		return nil, err
+	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(safePath), 0o700); err != nil {
 		return nil, fmt.Errorf("create host key directory: %w", err)
 	}
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := generateEd25519Key(path); err != nil {
+	if _, err := os.Stat(safePath); os.IsNotExist(err) {
+		if err := generateEd25519Key(safePath); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("stat host key: %w", err)
 	}
 
-	raw, err := os.ReadFile(path)
+	// #nosec G304 -- safePath fue normalizada antes de leer la clave host.
+	raw, err := os.ReadFile(safePath)
 	if err != nil {
 		return nil, fmt.Errorf("read host key: %w", err)
 	}
@@ -68,6 +75,7 @@ func generateEd25519Key(path string) error {
 		Bytes: der,
 	}
 
+	// #nosec G304 -- path fue normalizada por LoadOrCreateSigner antes de crear la clave.
 	if err := os.WriteFile(path, pem.EncodeToMemory(block), 0o600); err != nil {
 		return fmt.Errorf("write host key: %w", err)
 	}
