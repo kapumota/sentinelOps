@@ -56,17 +56,36 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
-            tcpSocket:
-              port: {{ .Values.livenessProbe.tcpSocket.port }}
+            httpGet:
+              scheme: HTTPS
+              path: {{ .Values.livenessProbe.path | quote }}
+              port: control-api
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
           {{- end }}
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
-            tcpSocket:
-              port: {{ .Values.readinessProbe.tcpSocket.port }}
+            httpGet:
+              scheme: HTTPS
+              path: {{ .Values.readinessProbe.path | quote }}
+              port: control-api
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              scheme: HTTPS
+              path: {{ .Values.startupProbe.path | quote }}
+              port: control-api
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
           {{- end }}
         {{- if .Values.opaSidecar.enabled }}
         - name: opa

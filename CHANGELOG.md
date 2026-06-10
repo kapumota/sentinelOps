@@ -1,5 +1,21 @@
 ### Changelog
 
+### Unreleased - fase 5 OpenAPI y versionado de API
+
+#### Agregado
+- Endpoints versionados `/api/v1/admin/status`, `/api/v1/admin/sessions`, `/api/v1/admin/tunnels` y `/api/v1/admin/tunnels/{id}/close`.
+- Health checks separados `/healthz/live`, `/healthz/ready` y `/healthz/startup` para probes de Kubernetes.
+- Especificación OpenAPI 3.0 en `docs/openapi.json`, `docs/swagger.json` y `docs/openapi.yaml`.
+- Documentación ligera en `/api/v1/docs/swagger/` y especificación JSON en `/api/v1/docs/swagger.json`.
+- Target `make docs` para regenerar la documentación OpenAPI versionada.
+- Target `make docs-check` para validar el JSON de la especificación.
+- Target `make api-smoke` para probar health, documentación y estado administrativo de la API v1.
+- Probes HTTP HTTPS en Helm usando el puerto `control-api`.
+
+#### Mantenido
+- Los endpoints legados `/api/admin/...` y `/healthz` siguen disponibles para compatibilidad.
+- No se agregan dependencias externas de Swagger para mantener el build reproducible y liviano.
+
 ### Unreleased - fase 4 OPA sidecar runtime
 
 #### Agregado

@@ -1359,3 +1359,86 @@ El modo exec sigue disponible con OPA_POLICY_MODE=exec
 ```bash
 make stop-opa-sidecar
 ```
+
+### Validación de fase 5 - OpenAPI y API v1
+
+#### Objetivo
+
+Validar que la API de control tenga endpoints versionados, health checks compatibles con Kubernetes y documentación OpenAPI accesible por HTTP.
+
+#### Validación estática
+
+```bash
+make docs
+make docs-check
+make fmt
+make vet
+make test
+make rust-test
+```
+
+#### Validación de health checks
+
+Con SentinelOps en ejecución:
+
+```bash
+curl -k https://localhost:9443/healthz/live
+curl -k https://localhost:9443/healthz/ready
+curl -k https://localhost:9443/healthz/startup
+```
+
+#### Validación de documentación
+
+```bash
+curl -k https://localhost:9443/api/v1/docs/swagger.json
+curl -k https://localhost:9443/api/v1/docs/swagger/
+```
+
+#### Validación de API v1
+
+```bash
+source .env.local
+curl -k -u "$APP_CONTROL_API_USER:$APP_CONTROL_API_PASSWORD" \
+  https://localhost:9443/api/v1/admin/status
+
+curl -k -u "$APP_CONTROL_API_USER:$APP_CONTROL_API_PASSWORD" \
+  https://localhost:9443/api/v1/admin/sessions
+
+curl -k -u "$APP_CONTROL_API_USER:$APP_CONTROL_API_PASSWORD" \
+  https://localhost:9443/api/v1/admin/tunnels
+```
+
+#### Validación automatizada local
+
+```bash
+make api-smoke
+```
+
+Si se usa OPA sidecar:
+
+```bash
+API_URL=https://localhost:9445 make api-smoke
+```
+
+#### Validación Helm
+
+```bash
+make helm-template
+```
+
+El render debe mostrar probes HTTP HTTPS contra el puerto `control-api`:
+
+```text
+/healthz/live
+/healthz/ready
+/healthz/startup
+```
+
+#### Resultado esperado
+
+```text
+La API v1 responde con Basic Auth.
+Los health checks responden sin autenticación.
+La especificación OpenAPI es JSON válido.
+Los endpoints legados siguen disponibles.
+```

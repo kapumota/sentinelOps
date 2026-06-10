@@ -1,0 +1,372 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SentinelOps Control API",
+    "version": "v1",
+    "description": "API administrativa versionada para health checks, estado operativo, sesiones, túneles y documentación OpenAPI de SentinelOps.",
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://localhost:9443",
+      "description": "Servidor local HTTPS"
+    },
+    {
+      "url": "https://localhost:9445",
+      "description": "Servidor local HTTPS con OPA sidecar"
+    }
+  ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Endpoints para liveness, readiness y startup probes"
+    },
+    {
+      "name": "admin",
+      "description": "Operaciones administrativas protegidas con Basic Auth"
+    },
+    {
+      "name": "docs",
+      "description": "Documentación OpenAPI y Swagger UI"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health check legado",
+        "responses": {
+          "200": {
+            "description": "Proceso vivo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz/live": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "Proceso vivo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz/ready": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Readiness probe",
+        "responses": {
+          "200": {
+            "description": "Proceso listo para recibir tráfico",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz/startup": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Startup probe",
+        "responses": {
+          "200": {
+            "description": "Inicialización completada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/status": {
+      "get": {
+        "tags": ["admin"],
+        "summary": "Estado general del sistema",
+        "security": [{"BasicAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Estado general",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/sessions": {
+      "get": {
+        "tags": ["admin"],
+        "summary": "Listar sesiones activas",
+        "security": [{"BasicAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Sesiones activas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tunnels": {
+      "get": {
+        "tags": ["admin"],
+        "summary": "Listar túneles activos",
+        "security": [{"BasicAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Túneles activos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tunnels/{id}/close": {
+      "post": {
+        "tags": ["admin"],
+        "summary": "Cerrar túnel activo",
+        "security": [{"BasicAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Túnel cerrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseTunnelResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Túnel no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/swagger.json": {
+      "get": {
+        "tags": ["docs"],
+        "summary": "Especificación OpenAPI en JSON",
+        "responses": {
+          "200": {
+            "description": "OpenAPI JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/swagger/": {
+      "get": {
+        "tags": ["docs"],
+        "summary": "Swagger UI ligera",
+        "responses": {
+          "200": {
+            "description": "Página HTML de documentación"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "no_autorizado"
+          },
+          "marca_tiempo": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "servicio": {
+            "type": "string",
+            "example": "sentinelops"
+          },
+          "version_api": {
+            "type": "string",
+            "example": "v1"
+          },
+          "marca_tiempo": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ready"
+          },
+          "componentes": {
+            "type": "object"
+          },
+          "version_api": {
+            "type": "string",
+            "example": "v1"
+          }
+        }
+      },
+      "StatusResponse": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "example": "ok"},
+          "servicio": {"type": "string", "example": "sentinelops"},
+          "sesiones_activas": {"type": "integer", "example": 1},
+          "tuneles_activos": {"type": "integer", "example": 0},
+          "version_api": {"type": "string", "example": "v1"}
+        }
+      },
+      "SessionsResponse": {
+        "type": "object",
+        "properties": {
+          "cantidad": {"type": "integer"},
+          "sesiones": {
+            "type": "array",
+            "items": {"type": "object"}
+          }
+        }
+      },
+      "TunnelsResponse": {
+        "type": "object",
+        "properties": {
+          "cantidad": {"type": "integer"},
+          "tuneles": {
+            "type": "array",
+            "items": {"type": "object"}
+          }
+        }
+      },
+      "CloseTunnelResponse": {
+        "type": "object",
+        "properties": {
+          "cerrado": {"type": "boolean", "example": true},
+          "id": {"type": "string", "example": "tun-000001"},
+          "tunel": {"type": "object"}
+        }
+      }
+    }
+  }
+}
