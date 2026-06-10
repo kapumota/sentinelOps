@@ -1,4 +1,4 @@
-name: sentinelops-codeql
+name: CodeQL
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - main
   schedule:
     - cron: "0 4 * * 1"
+  workflow_dispatch:
 
 permissions:
   actions: read
@@ -16,24 +17,52 @@ permissions:
   security-events: write
 
 jobs:
-  analyze:
-    name: CodeQL Go
+  analyze-go:
+    name: Analyze Go
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache: true
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install proto tools
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: go
+          build-mode: manual
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Generate proto
+        run: make proto-go
 
-      - name: Perform CodeQL analysis
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Build Go packages
+        run: go build ./...
+
+      - name: Clean generated proto
+        if: always()
+        run: make proto-clean
+
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:go"
