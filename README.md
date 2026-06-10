@@ -34,7 +34,7 @@
 
 #### Nota de versionado
 
-El repositorio conserva historial previo con versiones internas como `2.4.1` y variantes iniciales asociadas a `commit1-SentinelOps`. La versión `v1.0.0` no borra ese historial: lo consolida como una línea estable por fases, lista para release académico y técnico.
+El repositorio conserva historial previo con versiones internas como  y variantes iniciales asociadas a `commit1-SentinelOps`. La versión `v1.0.0` no borra ese historial: lo consolida como una línea estable por fases, lista para release académico y técnico.
 
 **SentinelOps es software real de laboratorio** diseñado para enseñanza, evaluación técnica y experimentación controlada en DevSecOps.
 
