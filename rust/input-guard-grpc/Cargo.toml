@@ -12,7 +12,7 @@ input-guard = { path = "../input-guard" }
 prost = "0.13"
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-stream = "0.1"
-tonic = "0.12"
+tonic = "0.14"
 tonic-health = "0.12"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
