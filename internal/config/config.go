@@ -81,6 +81,18 @@ type Config struct {
 	TelemetryEndpoint        string
 	TelemetryInsecure        bool
 	TelemetrySampleRate      float64
+	StoreType                string
+	PostgresHost             string
+	PostgresPort             int
+	PostgresDB               string
+	PostgresUser             string
+	PostgresPassword         string
+	PostgresSSLMode          string
+	PostgresPoolSize         int
+	RedisAddr                string
+	RedisPassword            string
+	RedisDB                  int
+	RedisPoolSize            int
 }
 
 func Load() Config {
@@ -163,6 +175,18 @@ func Load() Config {
 		TelemetryEndpoint:        getEnv("OTEL_EXPORTER_ENDPOINT", "localhost:4317"),
 		TelemetryInsecure:        getBool("OTEL_EXPORTER_INSECURE", true),
 		TelemetrySampleRate:      getFloat("OTEL_SAMPLE_RATE", 1.0),
+		StoreType:                getEnv("STORE_TYPE", "memory"),
+		PostgresHost:             getEnv("POSTGRES_HOST", "localhost"),
+		PostgresPort:             getInt("POSTGRES_PORT", 5432),
+		PostgresDB:               getEnv("POSTGRES_DB", "sentinelops"),
+		PostgresUser:             getEnv("POSTGRES_USER", "sentinelops"),
+		PostgresPassword:         getEnv("POSTGRES_PASSWORD", ""),
+		PostgresSSLMode:          getEnv("POSTGRES_SSLMODE", "disable"),
+		PostgresPoolSize:         getInt("POSTGRES_POOL_SIZE", 10),
+		RedisAddr:                getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:            getEnv("REDIS_PASSWORD", ""),
+		RedisDB:                  getInt("REDIS_DB", 0),
+		RedisPoolSize:            getInt("REDIS_POOL_SIZE", 10),
 	}
 }
 

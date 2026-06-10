@@ -47,6 +47,8 @@ STUDENT_PASS="$(generate_lab_password)"
 TEACHER_PASS="$(generate_lab_password)"
 AUDITOR_PASS="$(generate_lab_password)"
 ADMIN_PASS="$(generate_lab_password)"
+POSTGRES_PASS="$(generate_password)"
+REDIS_PASS="$(generate_password)"
 
 cat > "${ENV_LOCAL}" <<EOF_ENV
 # SentinelOps - entorno local generado
@@ -119,6 +121,20 @@ APP_STATE_PERSISTENCE_ENABLED=false
 APP_STATE_PERSISTENCE_DIR=data/state
 APP_STATE_SESSIONS_PATH=data/state/sessions.json
 APP_STATE_TUNNELS_PATH=data/state/tunnels.json
+
+# Storage fase 9
+STORE_TYPE=memory
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=sentinelops
+POSTGRES_USER=sentinelops
+POSTGRES_PASSWORD=${POSTGRES_PASS}
+POSTGRES_SSLMODE=disable
+POSTGRES_POOL_SIZE=10
+REDIS_ADDR=localhost:6379
+REDIS_PASSWORD=${REDIS_PASS}
+REDIS_DB=0
+REDIS_POOL_SIZE=10
 EOF_ENV
 
 chmod 600 "${ENV_LOCAL}"
@@ -132,6 +148,8 @@ printf 'student: %s\n' "${STUDENT_PASS}"
 printf 'teacher: %s\n' "${TEACHER_PASS}"
 printf 'auditor: %s\n' "${AUDITOR_PASS}"
 printf 'admin: %s\n' "${ADMIN_PASS}"
+printf 'PostgreSQL: sentinelops / %s\n' "${POSTGRES_PASS}"
+printf 'Redis password: %s\n' "${REDIS_PASS}"
 printf -- '------------------------------------------------------------\n\n'
 log_warn "Guarda estas credenciales. El archivo .env.local no debe versionarse."
 log_info "Uso sugerido: source .env.local && make run-ssh"

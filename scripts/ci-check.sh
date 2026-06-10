@@ -35,6 +35,7 @@ run_required "OpenAPI" make docs-check
 run_required "Go format" bash -c 'test -z "$(gofmt -l .)"'
 run_required "Go vet" make vet
 run_required "Go tests" make test
+run_required "Storage unit tests" make storage-test
 run_required "Rust validator clásico" make rust-test
 run_required "Rust validator gRPC build" make validator-grpc-build
 run_required "Rust validator gRPC tests" make validator-grpc-test

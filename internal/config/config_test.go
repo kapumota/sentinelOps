@@ -198,3 +198,51 @@ func TestLoadValidatorGRPCOverrides(t *testing.T) {
 		t.Fatal("expected grpc fail-open override to be honored")
 	}
 }
+
+func TestLoadStorageDefaults(t *testing.T) {
+	isolateEnvFile(t)
+	t.Setenv("STORE_TYPE", "")
+	t.Setenv("POSTGRES_PORT", "")
+	t.Setenv("REDIS_DB", "")
+
+	cfg := Load()
+	if cfg.StoreType != "memory" {
+		t.Fatalf("expected memory store by default, got %s", cfg.StoreType)
+	}
+	if cfg.PostgresPort != 5432 {
+		t.Fatalf("unexpected postgres port: %d", cfg.PostgresPort)
+	}
+	if cfg.RedisAddr != "localhost:6379" {
+		t.Fatalf("unexpected redis addr: %s", cfg.RedisAddr)
+	}
+}
+
+func TestLoadStorageOverrides(t *testing.T) {
+	isolateEnvFile(t)
+	t.Setenv("STORE_TYPE", "postgres")
+	t.Setenv("POSTGRES_HOST", "postgres")
+	t.Setenv("POSTGRES_PORT", "55432")
+	t.Setenv("POSTGRES_DB", "sentinelops_test")
+	t.Setenv("POSTGRES_USER", "operator")
+	t.Setenv("POSTGRES_PASSWORD", "secret")
+	t.Setenv("POSTGRES_SSLMODE", "require")
+	t.Setenv("POSTGRES_POOL_SIZE", "20")
+	t.Setenv("REDIS_ADDR", "redis:6379")
+	t.Setenv("REDIS_PASSWORD", "redis-secret")
+	t.Setenv("REDIS_DB", "2")
+	t.Setenv("REDIS_POOL_SIZE", "30")
+
+	cfg := Load()
+	if cfg.StoreType != "postgres" {
+		t.Fatalf("expected postgres store, got %s", cfg.StoreType)
+	}
+	if cfg.PostgresHost != "postgres" || cfg.PostgresPort != 55432 || cfg.PostgresDB != "sentinelops_test" {
+		t.Fatal("postgres overrides not honored")
+	}
+	if cfg.PostgresUser != "operator" || cfg.PostgresPassword != "secret" || cfg.PostgresSSLMode != "require" || cfg.PostgresPoolSize != 20 {
+		t.Fatal("postgres security overrides not honored")
+	}
+	if cfg.RedisAddr != "redis:6379" || cfg.RedisPassword != "redis-secret" || cfg.RedisDB != 2 || cfg.RedisPoolSize != 30 {
+		t.Fatal("redis overrides not honored")
+	}
+}

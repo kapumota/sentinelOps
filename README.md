@@ -1886,3 +1886,33 @@ reports/runtime/<timestamp>/
 ```
 
 El reporte incluye métricas, health checks, estado autenticado si hay contraseña configurada, targets de Prometheus, estado de Grafana, servicios de Jaeger y estado de contenedores.
+### Fase 9: persistencia PostgreSQL y Redis
+
+#### Objetivo
+
+La fase 9 agrega una abstracción de almacenamiento para sesiones, túneles, auditoría y rate limiting. El modo por defecto sigue siendo `memory`, pero el proyecto queda preparado para usar PostgreSQL como almacenamiento durable y Redis como cache operativo.
+
+#### Componentes agregados
+
+| Componente | Archivo |
+|---|---|
+| Interfaz Store | `internal/store/store.go` |
+| Store en memoria | `internal/store/memory.go` |
+| Store PostgreSQL | `internal/store/postgres.go` |
+| Store Redis | `internal/store/redis.go` |
+| Stack local | `docker-compose.storage.yml` |
+| Migraciones | `migrations/` |
+| Runbook | `docs/runbooks/persistencia-storage.md` |
+
+#### Comandos
+
+    make generate-secrets
+    make storage-up
+    source .env.local
+    make storage-smoke
+    make storage-test
+    make storage-down
+
+#### Limpieza
+
+    make storage-clean
