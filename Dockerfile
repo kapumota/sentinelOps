@@ -14,7 +14,7 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/sentinelops ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/sentinelops-client ./cmd/client
 
-FROM openpolicyagent/opa:0.67.1-static AS opa-builder
+FROM openpolicyagent/opa:1.17.1-static AS opa-builder
 
 FROM alpine:3.20
 LABEL org.opencontainers.image.title="sentinelops" \
