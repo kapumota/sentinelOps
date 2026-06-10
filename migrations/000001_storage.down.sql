@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS rate_limits;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS tunnels;
+DROP TABLE IF EXISTS sessions;

@@ -1672,3 +1672,80 @@ Comandos:
     git diff --check
 
 Es aceptable ver rutas ignoradas con `!!` si corresponden a artefactos generados. No deben aparecer en `git status --short` normal.
+### Fase 9: validación de persistencia PostgreSQL y Redis
+
+#### Objetivo
+
+Validar que SentinelOps incorpora una abstracción de almacenamiento con modo en memoria, PostgreSQL para persistencia durable y Redis para cache y rate limiting.
+
+#### Validación estática
+
+Comandos:
+
+    bash -n scripts/storage-smoke.sh
+    bash -n scripts/generate-secrets.sh
+    git diff --check
+
+#### Dependencias Go
+
+Después de aplicar la fase 9 se debe ejecutar:
+
+    go mod tidy
+
+Esto actualiza `go.mod` y puede actualizar `go.sum`.
+
+#### Validación base del proyecto
+
+Comandos:
+
+    make generate-secrets
+    make check-secrets
+    make vet
+    make test
+    make storage-test
+    make rust-test
+    make validator-grpc-build
+    make validator-grpc-test
+
+#### Levantar PostgreSQL y Redis
+
+Comando:
+
+    make storage-up
+
+#### Smoke test de almacenamiento
+
+En otra terminal:
+
+    source .env.local
+    make storage-smoke
+
+El smoke test revisa:
+
+    PostgreSQL disponible
+    Redis disponible
+    variables de entorno de storage
+    migraciones SQL presentes
+    conectividad básica de servicios
+
+#### Apagar stack de almacenamiento
+
+Comando:
+
+    make storage-down
+
+#### Limpieza local
+
+Comando:
+
+    make storage-clean
+
+#### Verificación antes del commit
+
+Comandos:
+
+    git status --short
+    git status --short --ignored | grep -E "target/|gen/go|coverage|policies/bundle|reports/runtime|\.patch" || true
+    git diff --check
+
+No se debe versionar el patch de fase 9 ni artefactos generados.

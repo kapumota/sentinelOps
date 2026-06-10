@@ -148,3 +148,15 @@
 
 - El modo por defecto sigue siendo `binary` para no romper el flujo existente.
 - El validador por binario local se mantiene como fallback operativo.
+### Fase 9: persistencia PostgreSQL y Redis
+
+#### Agregado
+
+- Se agrega interfaz `Store` para sesiones, túneles, auditoría y rate limiting.
+- Se agrega implementación en memoria como modo por defecto de laboratorio.
+- Se agrega implementación PostgreSQL para persistencia durable.
+- Se agrega implementación Redis para cache, TTL y rate limiting.
+- Se agrega `docker-compose.storage.yml`.
+- Se agregan migraciones SQL y script de inicialización PostgreSQL.
+- Se agregan comandos `storage-up`, `storage-down`, `storage-smoke`, `storage-test` y `storage-clean`.
+- Se actualiza documentación de uso y validación.

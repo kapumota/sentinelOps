@@ -572,3 +572,36 @@ runtime-evidence:
 
 observability-clean:
 	rm -rf reports/runtime
+.PHONY: storage-up storage-down storage-logs storage-smoke storage-test storage-clean migrate-install migrate-up migrate-down migrate-create
+
+storage-up:
+	@if [ ! -f .env.local ]; then echo "Ejecuta make generate-secrets antes de levantar storage"; exit 1; fi
+	docker compose --env-file .env.local -f docker-compose.storage.yml up -d
+
+storage-down:
+	docker compose --env-file .env.local -f docker-compose.storage.yml down --remove-orphans
+
+storage-logs:
+	docker compose --env-file .env.local -f docker-compose.storage.yml logs --tail=200 -f
+
+storage-smoke:
+	bash scripts/storage-smoke.sh
+
+storage-test:
+	go test ./internal/store/...
+
+storage-clean:
+	docker compose --env-file .env.local -f docker-compose.storage.yml down -v --remove-orphans
+
+migrate-install:
+	go install -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+migrate-up:
+	migrate -path migrations -database "postgres://$${POSTGRES_USER:-sentinelops}:$${POSTGRES_PASSWORD}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-sentinelops}?sslmode=$${POSTGRES_SSLMODE:-disable}" up
+
+migrate-down:
+	migrate -path migrations -database "postgres://$${POSTGRES_USER:-sentinelops}:$${POSTGRES_PASSWORD}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-sentinelops}?sslmode=$${POSTGRES_SSLMODE:-disable}" down 1
+
+migrate-create:
+	@read -r -p "Nombre de migración: " name; \
+	migrate create -ext sql -dir migrations -seq "$$name"
