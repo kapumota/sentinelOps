@@ -85,11 +85,7 @@ impl Validator for ValidatorService {
         &self,
         _request: Request<HealthRequest>,
     ) -> Result<Response<HealthResponse>, Status> {
-        let uptime_seconds = self
-            .start_time
-            .elapsed()
-            .unwrap_or_default()
-            .as_secs() as i64;
+        let uptime_seconds = self.start_time.elapsed().unwrap_or_default().as_secs() as i64;
 
         Ok(Response::new(HealthResponse {
             status: validator::v1::health_response::Status::Healthy as i32,
