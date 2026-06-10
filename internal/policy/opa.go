@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"sentinelops/internal/config"
+	"sentinelops/internal/security"
 	"sentinelops/internal/telemetry"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -111,7 +112,20 @@ func (r *OPARunner) Check(input map[string]any) ([]string, []string, error) {
 }
 
 func (r *OPARunner) eval(inputFile, query string) ([]string, error) {
-	cmd := exec.Command(r.Binary, "eval", "--format=json", "--data", r.PolicyDir, "--input", inputFile, query)
+	binary, err := security.ValidateExecutable(r.Binary)
+	if err != nil {
+		return nil, err
+	}
+	policyDir, err := security.ValidateFilesystemPath(r.PolicyDir, "directorio de políticas OPA")
+	if err != nil {
+		return nil, err
+	}
+	safeInput, err := security.ValidateFilesystemPath(inputFile, "entrada temporal OPA")
+	if err != nil {
+		return nil, err
+	}
+	// #nosec G204 -- binary, policyDir y safeInput son validados antes de ejecutar sin shell.
+	cmd := exec.Command(binary, "eval", "--format=json", "--data", policyDir, "--input", safeInput, query)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout

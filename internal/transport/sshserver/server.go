@@ -615,7 +615,7 @@ func splitAddr(value string) (string, uint32) {
 		return value, 0
 	}
 	port, err := strconv.Atoi(rawPort)
-	if err != nil {
+	if err != nil || port < 0 || port > 65535 {
 		return host, 0
 	}
 	return host, uint32(port)

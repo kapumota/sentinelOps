@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"sentinelops/internal/forwarding"
+	"sentinelops/internal/security"
 	"sentinelops/internal/session"
 )
 
@@ -94,7 +95,11 @@ func writeSnapshot[T any](path string, snapshot SnapshotFile[T]) error {
 	if path == "" {
 		return fmt.Errorf("ruta de persistencia vacía")
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	safePath, err := security.ValidateFilesystemPath(path, "snapshot de persistencia")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(safePath), 0o700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(snapshot, "", "  ")
@@ -102,16 +107,22 @@ func writeSnapshot[T any](path string, snapshot SnapshotFile[T]) error {
 		return err
 	}
 	data = append(data, '\n')
-	tmp := path + ".tmp"
+	tmp := safePath + ".tmp"
+	// #nosec G304 -- tmp se deriva de safePath normalizada.
 	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	return os.Rename(tmp, safePath)
 }
 
 func loadSnapshot[T any](path string) (SnapshotFile[T], error) {
 	var out SnapshotFile[T]
-	data, err := os.ReadFile(path)
+	safePath, err := security.ValidateFilesystemPath(path, "snapshot de persistencia")
+	if err != nil {
+		return out, err
+	}
+	// #nosec G304 -- safePath fue normalizada antes de leer el snapshot.
+	data, err := os.ReadFile(safePath)
 	if err != nil {
 		return out, err
 	}

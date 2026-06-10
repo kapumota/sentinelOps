@@ -91,12 +91,17 @@ func (v *StaticRuleValidator) Validate(input string) error {
 }
 
 func (v *ExternalProcessValidator) Validate(input string) error {
-	cmd := exec.Command(v.binary, input)
+	binary, err := ValidateExecutable(v.binary)
+	if err != nil {
+		return err
+	}
+	// #nosec G204 -- binary se valida con ValidateExecutable y se ejecuta sin shell.
+	cmd := exec.Command(binary, input)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err == nil {
 		return nil
 	}

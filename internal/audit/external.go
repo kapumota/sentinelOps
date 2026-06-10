@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"sentinelops/internal/config"
+	"sentinelops/internal/security"
 )
 
 // ExternalRunner executes an optional external audit tool and converts its
@@ -42,7 +43,16 @@ func (r *CommandRunner) Run(profile string) ([]Finding, error) {
 		projectRoot = "."
 	}
 
-	cmd := exec.Command(r.Command, r.Script, "--profile", profile, "--project-root", projectRoot)
+	command, err := security.ValidateExecutable(r.Command)
+	if err != nil {
+		return nil, err
+	}
+	script, err := security.ValidateFilesystemPath(r.Script, "script de auditoría externa")
+	if err != nil {
+		return nil, err
+	}
+	// #nosec G204 -- command y script son validados antes de ejecutar sin shell.
+	cmd := exec.Command(command, script, "--profile", profile, "--project-root", projectRoot)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout

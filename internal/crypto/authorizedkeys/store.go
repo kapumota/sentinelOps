@@ -31,6 +31,7 @@ func (s *Store) IsAuthorized(username string, key ssh.PublicKey) (bool, error) {
 		return false, err
 	}
 
+	// #nosec G304 -- pathForUser valida el nombre de usuario y restringe la ruta al directorio de authorized_keys.
 	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return false, nil

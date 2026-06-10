@@ -160,3 +160,17 @@
 - Se agregan migraciones SQL y script de inicialización PostgreSQL.
 - Se agregan comandos `storage-up`, `storage-down`, `storage-smoke`, `storage-test` y `storage-clean`.
 - Se actualiza documentación de uso y validación.
+
+### Fase 9.1: hardening de alertas de seguridad
+
+#### Agregado
+
+- Se agrega helper de validación de rutas y ejecutables.
+- Se agrega documentación de alertas de Code scanning.
+
+#### Corregido
+
+- Se reduce exposición de secretos en logs.
+- Se valida conversión de puertos antes de convertir a `uint32`.
+- Se documentan ejecuciones externas auditadas sin shell.
+- Se evita `context.Background` directo en goroutines de apagado.

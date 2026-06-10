@@ -1749,3 +1749,69 @@ Comandos:
     git diff --check
 
 No se debe versionar el patch de fase 9 ni artefactos generados.
+### Fase 9.1: validación de hardening de alertas de seguridad
+
+#### Objetivo
+
+Validar que SentinelOps reduce alertas de seguridad detectadas por gosec, CodeQL y Trivy sin ocultarlas sin análisis.
+
+#### Alcance
+
+Esta fase se enfoca en alertas de código y dependencias después de la fase 9 de persistencia PostgreSQL y Redis.
+
+Grupos revisados:
+
+    Potential file inclusion via variable
+    Subprocess launched with potential tainted input or cmd arguments
+    integer overflow conversion int -> uint32
+    Use of ssh InsecureIgnoreHostKey should be audited
+    context.Background/TODO en goroutines
+    Clear-text logging of sensitive information
+
+#### Validación estática
+
+Comandos:
+
+    gofmt -w internal/security/pathguard.go internal/security/pathguard_test.go
+    git diff --check
+
+#### Validación base del proyecto
+
+Comandos:
+
+    make check-secrets
+    make vet
+    make test
+    make storage-test
+    TESTCONTAINERS_RYUK_DISABLED=true make test-integration
+    make rust-test
+    make validator-grpc-build
+    make validator-grpc-test
+
+#### Validación de seguridad local
+
+Si gosec está instalado:
+
+    gosec ./...
+
+Si Trivy está instalado:
+
+    trivy fs --scanners vuln,secret,misconfig .
+
+#### Alertas aceptadas
+
+Si una alerta solo aplica a tests o es un falso positivo, debe quedar documentada en:
+
+    docs/security/alertas-code-scanning.md
+
+No se deben cerrar alertas manualmente en GitHub sin justificación.
+
+#### Verificación antes del commit
+
+Comandos:
+
+    git status --short
+    git status --short --ignored | grep -E "target/|gen/go|coverage|policies/bundle|reports/runtime|\.patch" || true
+    git diff --check
+
+No se debe versionar el patch de fase 9.1 ni artefactos generados.

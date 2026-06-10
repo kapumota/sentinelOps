@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"sentinelops/internal/client/knownhostscb"
+	"sentinelops/internal/security"
 )
 
 type Config struct {
@@ -92,13 +93,18 @@ func Run(cfg Config) error {
 }
 
 func loadSigner(path string) (ssh.Signer, error) {
-	raw, err := os.ReadFile(path)
+	safePath, err := security.ValidateFilesystemPath(path, "clave privada SSH")
 	if err != nil {
-		return nil, fmt.Errorf("leer clave privada %s: %w", path, err)
+		return nil, err
+	}
+	// #nosec G304 -- safePath fue normalizada antes de leer la clave privada.
+	raw, err := os.ReadFile(safePath)
+	if err != nil {
+		return nil, fmt.Errorf("leer clave privada %s: %w", safePath, err)
 	}
 	signer, err := ssh.ParsePrivateKey(raw)
 	if err != nil {
-		return nil, fmt.Errorf("interpretar clave privada %s: %w", path, err)
+		return nil, fmt.Errorf("interpretar clave privada %s: %w", safePath, err)
 	}
 	return signer, nil
 }
