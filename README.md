@@ -1948,3 +1948,37 @@ La explicación de alertas, criterios de aceptación y validación se encuentra 
 ```text
 docs/security/alertas-code-scanning.md
 ```
+
+### Fase 10: benchmarks de rendimiento
+
+#### Objetivo
+
+La fase 10 agrega benchmarks reproducibles para medir throughput de conexiones TCP frente a SSH, latencia de validación Go nativa frente a Rust gRPC y overhead de OPA.
+
+#### Comandos
+
+    make benchmarks
+    make benchmark-network
+    make benchmark-validator
+    make benchmark-opa
+    make benchmarks-summary
+    make benchmarks-clean
+
+#### Reportes
+
+Los reportes locales se generan en:
+
+    reports/benchmarks/<timestamp>/
+
+Los reportes generados no se versionan. La documentación base está en:
+
+    docs/benchmarks/resultados.md
+    docs/runbooks/benchmarks-rendimiento.md
+
+#### Benchmark Rust gRPC
+
+Para medir el validador Rust gRPC se debe levantar el servicio y definir:
+
+    BENCH_VALIDATOR_GRPC_ADDR=127.0.0.1:50051
+
+Si esa variable no existe, el benchmark gRPC se omite y se mantiene la medición Go nativa.

@@ -605,3 +605,23 @@ migrate-down:
 migrate-create:
 	@read -r -p "Nombre de migración: " name; \
 	migrate create -ext sql -dir migrations -seq "$$name"
+
+.PHONY: benchmarks benchmark-network benchmark-validator benchmark-opa benchmarks-summary benchmarks-clean
+
+benchmarks:
+	bash scripts/run-benchmarks.sh
+
+benchmark-network:
+	BENCH_PATTERN='BenchmarkTCPConnectionThroughput|BenchmarkSSHConnectionThroughput' bash scripts/run-benchmarks.sh
+
+benchmark-validator:
+	BENCH_PATTERN='BenchmarkValidator' bash scripts/run-benchmarks.sh
+
+benchmark-opa:
+	BENCH_PATTERN='BenchmarkOPA' bash scripts/run-benchmarks.sh
+
+benchmarks-summary:
+	bash scripts/benchmark-summary.sh
+
+benchmarks-clean:
+	rm -rf reports/benchmarks
