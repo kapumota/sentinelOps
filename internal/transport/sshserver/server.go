@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -305,7 +306,20 @@ func (s *Server) handleTCPIPForwardRequest(conn *ssh.ServerConn, req *ssh.Reques
 		s.logger.Warn("falló la escucha del reenvío remoto", "session_id", sess.ID, "username", sess.Username, "bind", bind, "error", err)
 		return
 	}
-	actualPort := uint32(listener.Addr().(*net.TCPAddr).Port)
+	tcpAddr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		s.metrics.ObserveTunnelRejected("remote", "puerto_invalido")
+		s.logger.Warn("dirección de escucha no TCP", "session_id", sess.ID, "username", sess.Username, "bind", bind)
+		_ = listener.Close()
+		return
+	}
+	if tcpAddr.Port < 0 || tcpAddr.Port > math.MaxUint32 {
+		s.metrics.ObserveTunnelRejected("remote", "puerto_fuera_de_rango")
+		s.logger.Warn("puerto de escucha fuera de rango", "session_id", sess.ID, "username", sess.Username, "bind", bind, "port", tcpAddr.Port)
+		_ = listener.Close()
+		return
+	}
+	actualPort := uint32(tcpAddr.Port)
 	actualBind := forwarding.NormalizeTarget(p.BindAddr, actualPort)
 	registry.Put(actualBind, listener)
 	if req.WantReply {
