@@ -52,17 +52,22 @@ func TestControlAPIHTTPSIntegration(t *testing.T) {
 	baseURL := "https://" + addr
 	waitForHTTPS(t, client, baseURL+"/healthz")
 
-	res, err := client.Get(baseURL + "/healthz")
-	if err != nil {
-		t.Fatalf("healthz request failed: %v", err)
+	var res *http.Response
+	var err error
+
+	for _, path := range []string{"/healthz", "/healthz/live", "/healthz/ready", "/healthz/startup"} {
+		res, err = client.Get(baseURL + path)
+		if err != nil {
+			t.Fatalf("health request failed for %s: %v", path, err)
+		}
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected health 200 for %s, got %d", path, res.StatusCode)
+		}
+		if got := res.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+			t.Fatalf("expected nosniff header for %s, got %q", path, got)
+		}
+		_ = res.Body.Close()
 	}
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("expected healthz 200, got %d", res.StatusCode)
-	}
-	if got := res.Header.Get("X-Content-Type-Options"); got != "nosniff" {
-		t.Fatalf("expected nosniff header, got %q", got)
-	}
-	_ = res.Body.Close()
 
 	res, err = client.Get(baseURL + "/api/admin/status")
 	if err != nil {
@@ -92,6 +97,66 @@ func TestControlAPIHTTPSIntegration(t *testing.T) {
 	}
 	if payload["sesiones_activas"].(float64) != 1 {
 		t.Fatalf("expected one active session, got %#v", payload["sesiones_activas"])
+	}
+
+	req, err = http.NewRequest(http.MethodGet, baseURL+"/api/v1/admin/status", nil)
+	if err != nil {
+		t.Fatalf("build v1 status request: %v", err)
+	}
+	req.SetBasicAuth("admin", "admin-secret")
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("authorized v1 status request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected authorized v1 status 200, got %d", res.StatusCode)
+	}
+	_ = res.Body.Close()
+
+	res, err = client.Get(baseURL + "/api/v1/docs/swagger.json")
+	if err != nil {
+		t.Fatalf("openapi request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected openapi 200, got %d", res.StatusCode)
+	}
+	if got := res.Header.Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected openapi json content type, got %q", got)
+	}
+	var spec map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&spec); err != nil {
+		t.Fatalf("decode openapi: %v", err)
+	}
+	_ = res.Body.Close()
+	if spec["openapi"] != "3.0.3" {
+		t.Fatalf("expected openapi 3.0.3, got %#v", spec["openapi"])
+	}
+
+	res, err = client.Get(baseURL + "/api/v1/docs/swagger/")
+	if err != nil {
+		t.Fatalf("swagger ui request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected swagger ui 200, got %d", res.StatusCode)
+	}
+	_ = res.Body.Close()
+
+	tunnel := tunnels.OpenLocal("sess-it", "student", "127.0.0.1:9001", "127.0.0.1:1234", nil)
+	req, err = http.NewRequest(http.MethodPost, baseURL+"/api/v1/admin/tunnels/"+tunnel.ID+"/close", nil)
+	if err != nil {
+		t.Fatalf("build close tunnel request: %v", err)
+	}
+	req.SetBasicAuth("admin", "admin-secret")
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("close tunnel request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected close tunnel 200, got %d", res.StatusCode)
+	}
+	_ = res.Body.Close()
+	if _, ok := tunnels.Get(tunnel.ID); ok {
+		t.Fatalf("expected tunnel %s to be closed", tunnel.ID)
 	}
 
 	cancel()

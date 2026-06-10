@@ -92,17 +92,27 @@ resources:
 
 livenessProbe:
   enabled: true
-  tcpSocket:
-    port: tcp
+  path: /healthz/live
   initialDelaySeconds: 10
   periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 readinessProbe:
   enabled: true
-  tcpSocket:
-    port: tcp
+  path: /healthz/ready
   initialDelaySeconds: 5
   periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 2
+
+startupProbe:
+  enabled: true
+  path: /healthz/startup
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 12
 
 networkPolicy:
   enabled: true

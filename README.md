@@ -1585,3 +1585,85 @@ OPA_POLICY_MODE=exec make run-ssh
 ```bash
 make stop-opa-sidecar
 ```
+
+### Fase 5 - OpenAPI y versionado de API
+
+La fase 5 agrega una superficie HTTP versionada para la API administrativa y documentación OpenAPI sin reemplazar los endpoints legados.
+
+#### Endpoints de health check
+
+Los probes quedan separados para Kubernetes y validación local:
+
+| Método | Endpoint | Uso | Auth |
+|---|---|---|---|
+| `GET` | `/healthz` | Compatibilidad legado | No |
+| `GET` | `/healthz/live` | Liveness probe | No |
+| `GET` | `/healthz/ready` | Readiness probe | No |
+| `GET` | `/healthz/startup` | Startup probe | No |
+
+#### API administrativa v1
+
+| Método | Endpoint | Descripción | Auth |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/status` | Estado general del sistema | Basic |
+| `GET` | `/api/v1/admin/sessions` | Sesiones activas | Basic |
+| `GET` | `/api/v1/admin/tunnels` | Túneles activos | Basic |
+| `POST` | `/api/v1/admin/tunnels/{id}/close` | Cerrar túnel activo | Basic |
+
+Los endpoints legados bajo `/api/admin/...` se mantienen para compatibilidad.
+
+#### Documentación OpenAPI
+
+La especificación OpenAPI 3.0 está disponible en:
+
+```text
+/api/v1/docs/swagger.json
+/api/v1/docs/openapi.json
+```
+
+La documentación ligera se expone en:
+
+```text
+/api/v1/docs/swagger/
+```
+
+También se versionan archivos estáticos para revisión en repositorio:
+
+```text
+docs/openapi.json
+docs/swagger.json
+docs/openapi.yaml
+```
+
+#### Regenerar documentación
+
+```bash
+make docs
+make docs-check
+```
+
+#### Probar API v1 local
+
+Con SentinelOps ejecutándose y `.env.local` cargado:
+
+```bash
+source .env.local
+curl -k https://localhost:9443/healthz/live
+curl -k https://localhost:9443/healthz/ready
+curl -k https://localhost:9443/healthz/startup
+curl -k https://localhost:9443/api/v1/docs/swagger.json
+curl -k -u "$APP_CONTROL_API_USER:$APP_CONTROL_API_PASSWORD" \
+  https://localhost:9443/api/v1/admin/status
+```
+
+También se puede usar:
+
+```bash
+make api-smoke
+```
+
+Para el stack con OPA sidecar, usa el puerto externo `9445`:
+
+```bash
+API_URL=https://localhost:9445 make api-smoke
+```

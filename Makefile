@@ -462,3 +462,24 @@ docker-stop:
 cleanup:
 	bash scripts/cleanup.sh
 	rm -f .env.local
+
+.PHONY: docs docs-check api-smoke
+
+docs:
+	bash scripts/generate-openapi.sh
+
+docs-check:
+	python3 -m json.tool docs/swagger.json >/dev/null
+	python3 -m json.tool internal/controlplane/httpapi/openapi.json >/dev/null
+	@echo "Especificación OpenAPI válida."
+
+api-smoke:
+	@API_URL=$${API_URL:-https://localhost:9443}; \
+	API_USER=$${API_USER:-$${APP_CONTROL_API_USER:-admin}}; \
+	API_PASSWORD=$${API_PASSWORD:-$${APP_CONTROL_API_PASSWORD:-}}; \
+	curl -ksf "$$API_URL/healthz/live" >/dev/null; \
+	curl -ksf "$$API_URL/healthz/ready" >/dev/null; \
+	curl -ksf "$$API_URL/healthz/startup" >/dev/null; \
+	curl -ksf "$$API_URL/api/v1/docs/swagger.json" >/dev/null; \
+	curl -ksf -u "$$API_USER:$$API_PASSWORD" "$$API_URL/api/v1/admin/status" >/dev/null; \
+	echo "API v1 verificada en $$API_URL"

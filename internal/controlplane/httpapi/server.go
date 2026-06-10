@@ -2,8 +2,8 @@ package httpapi
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
@@ -55,6 +55,17 @@ func (s *Server) Start(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealthz)
+	mux.HandleFunc("/healthz/live", s.handleHealthz)
+	mux.HandleFunc("/healthz/ready", s.handleReady)
+	mux.HandleFunc("/healthz/startup", s.handleStartup)
+	mux.HandleFunc("/api/v1/docs/swagger.json", s.handleOpenAPIJSON)
+	mux.HandleFunc("/api/v1/docs/openapi.json", s.handleOpenAPIJSON)
+	mux.HandleFunc("/api/v1/docs/swagger/", s.handleSwaggerUI)
+	mux.HandleFunc("/api/v1/docs/swagger", s.handleSwaggerUI)
+	mux.HandleFunc("/api/v1/admin/status", s.withAuth(s.handleStatus))
+	mux.HandleFunc("/api/v1/admin/sessions", s.withAuth(s.handleSessions))
+	mux.HandleFunc("/api/v1/admin/tunnels", s.withAuth(s.handleTunnels))
+	mux.HandleFunc("/api/v1/admin/tunnels/", s.withAuth(s.handleV1TunnelByID))
 	mux.HandleFunc("/api/admin/status", s.withAuth(s.handleStatus))
 	mux.HandleFunc("/api/admin/sessions", s.withAuth(s.handleSessions))
 	mux.HandleFunc("/api/admin/sesiones", s.withAuth(s.handleSessions))
@@ -134,6 +145,43 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		"servicio":     s.cfg.AppName,
 		"profile":      s.cfg.Profile,
 		"transporte":   s.cfg.Transport,
+		"version_api":  apiVersion,
+		"marca_tiempo": time.Now().UTC(),
+	})
+}
+
+func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "metodo_no_permitido"})
+		return
+	}
+	componentes := map[string]any{
+		"control_api":       s.cfg.ControlAPIEnabled,
+		"sesiones":          s.sesiones != nil,
+		"tuneles":           s.tuneles != nil,
+		"opa_habilitado":    s.cfg.PolicyEnabled,
+		"opa_modo":          s.cfg.PolicyMode,
+		"persistencia":      s.cfg.StatePersistenceEnabled,
+		"telemetria_trazas": s.cfg.TelemetryEnabled,
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":       "ready",
+		"servicio":     s.cfg.AppName,
+		"version_api":  apiVersion,
+		"componentes":  componentes,
+		"marca_tiempo": time.Now().UTC(),
+	})
+}
+
+func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "metodo_no_permitido"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":       "started",
+		"servicio":     s.cfg.AppName,
+		"version_api":  apiVersion,
 		"marca_tiempo": time.Now().UTC(),
 	})
 }
@@ -148,6 +196,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"servicio":         s.cfg.AppName,
 		"profile":          s.cfg.Profile,
 		"transporte":       s.cfg.Transport,
+		"version_api":      apiVersion,
 		"sesiones_activas": sessionCount(s.sesiones),
 		"tuneles_activos":  tunelCount(s.tuneles),
 		"control_api": map[string]any{
@@ -266,6 +315,56 @@ func (s *Server) handleTunnelByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleV1TunnelByID(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/tunnels/")
+	path = strings.TrimSpace(path)
+	id, action, hasAction := strings.Cut(path, "/")
+	id = strings.TrimSpace(id)
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "falta_id_tunel"})
+		return
+	}
+
+	if hasAction {
+		if action != "close" {
+			writeJSON(w, http.StatusNotFound, map[string]any{"error": "endpoint_no_encontrado"})
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "metodo_no_permitido"})
+			return
+		}
+		s.closeTunnelByID(w, id)
+		return
+	}
+
+	if r.Method != http.MethodDelete {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "metodo_no_permitido"})
+		return
+	}
+	s.closeTunnelByID(w, id)
+}
+
+func (s *Server) closeTunnelByID(w http.ResponseWriter, id string) {
+	if s.tuneles == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "reenvio_no_disponible"})
+		return
+	}
+	tunel, ok := s.tuneles.Get(id)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "tunel_no_encontrado", "id": id})
+		return
+	}
+	cerrado := s.tuneles.Close(id)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"cerrado":      cerrado,
+		"id":           id,
+		"version_api":  apiVersion,
+		"marca_tiempo": time.Now().UTC(),
+		"tunel":        tunel,
+	})
+}
+
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -322,7 +421,7 @@ func ensureCertificatePair(certPath, keyPath string, hosts []string) error {
 		}
 	}
 
-	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return err
 	}
@@ -354,18 +453,15 @@ func ensureCertificatePair(certPath, keyPath string, hosts []string) error {
 		}
 	}
 
-	der, err := x509.CreateCertificate(rand.Reader, tpl, tpl, pub, priv)
+	der, err := x509.CreateCertificate(rand.Reader, tpl, tpl, &priv.PublicKey, priv)
 	if err != nil {
 		return err
 	}
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 
-	pkcs8, err := x509.MarshalPKCS8PrivateKey(priv)
-	if err != nil {
-		return err
-	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8})
+	keyBytes := x509.MarshalPKCS1PrivateKey(priv)
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: keyBytes})
 
 	if err := os.WriteFile(certPath, certPEM, 0o600); err != nil {
 		return err
