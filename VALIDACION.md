@@ -1527,3 +1527,62 @@ make proto-clean
 ```
 
 Si esta validación modifica `go.mod` o `go.sum`, revisa el diff antes de versionarlo. Para esta fase, el flujo obligatorio sigue usando `VALIDATOR_MODE=binary`.
+
+### Fase 7: validación CI/CD DevSecOps
+
+#### Objetivo
+
+Validar localmente los controles principales que ejecuta GitHub Actions antes de abrir un PR.
+
+#### Validación rápida
+
+```bash
+bash -n scripts/ci-check.sh
+python3 -m json.tool .github/changelog-config.json >/dev/null
+git diff --check
+```
+
+#### Validación principal
+
+```bash
+make check-secrets
+make docs-check
+make vet
+make test
+make rust-test
+make validator-grpc-build
+make validator-grpc-test
+```
+
+#### Validación por bloques
+
+```bash
+make ci-check
+make ci-openapi
+make ci-proto
+make ci-security
+```
+
+#### Limpieza obligatoria
+
+```bash
+make ci-clean
+rm -f coverage.out coverage.html
+```
+
+#### Verificación antes del commit
+
+```bash
+git status --short
+git status --short --ignored | grep -E "target/|gen/go|coverage|policies/bundle|\.patch" || true
+git diff --check
+```
+
+Es aceptable ver rutas con `!!` si son artefactos ignorados, por ejemplo:
+
+```text
+!! rust/input-guard/target/
+!! rust/input-guard-grpc/target/
+```
+
+No deben aparecer en `git status --short` normal.
