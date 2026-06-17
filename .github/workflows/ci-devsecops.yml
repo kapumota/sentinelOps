@@ -241,7 +241,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build SentinelOps image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -251,7 +251,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build input-guard gRPC image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: rust/input-guard-grpc/Dockerfile
