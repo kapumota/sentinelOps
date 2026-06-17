@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.12.3
 	github.com/prometheus/client_golang v1.19.1
 	github.com/redis/go-redis/v9 v9.20.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
