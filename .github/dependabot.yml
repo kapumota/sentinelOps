@@ -5,7 +5,17 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: sunday
+      time: "06:00"
+      timezone: America/Lima
+    open-pull-requests-limit: 2
+    groups:
+      go-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     labels:
       - dependencies
       - go
@@ -17,7 +27,17 @@ updates:
     directory: /rust/input-guard
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: sunday
+      time: "06:20"
+      timezone: America/Lima
+    open-pull-requests-limit: 1
+    groups:
+      rust-input-guard:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     labels:
       - dependencies
       - rust
@@ -29,7 +49,17 @@ updates:
     directory: /rust/input-guard-grpc
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: sunday
+      time: "06:40"
+      timezone: America/Lima
+    open-pull-requests-limit: 1
+    groups:
+      rust-input-guard-grpc:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     labels:
       - dependencies
       - rust
@@ -42,7 +72,14 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: sunday
+      time: "07:00"
+      timezone: America/Lima
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     labels:
       - dependencies
       - ci
@@ -54,7 +91,17 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: sunday
+      time: "07:20"
+      timezone: America/Lima
+    open-pull-requests-limit: 1
+    groups:
+      docker-root:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     labels:
       - dependencies
       - docker
@@ -66,7 +113,17 @@ updates:
     directory: /rust/input-guard-grpc
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: sunday
+      time: "07:40"
+      timezone: America/Lima
+    open-pull-requests-limit: 1
+    groups:
+      docker-grpc:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     labels:
       - dependencies
       - docker
