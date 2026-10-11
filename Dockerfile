@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM rust:1.79-alpine AS rust-builder
+FROM rust:1.99-alpine AS rust-builder
 WORKDIR /build/rust/input-guard
 COPY rust/input-guard /build/rust/input-guard
 RUN cargo build --release && chmod +x target/release/input-guard
@@ -14,9 +14,9 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/sentinelops ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/sentinelops-client ./cmd/client
 
-FROM openpolicyagent/opa:0.67.1-static AS opa-builder
+FROM openpolicyagent/opa:0.70.0-static AS opa-builder
 
-FROM alpine:3.20
+FROM alpine:3.24
 LABEL org.opencontainers.image.title="sentinelops" \
       org.opencontainers.image.version="2.4.1" \
       org.opencontainers.image.description="SentinelOps secure remote access lab"
